@@ -354,7 +354,6 @@ namespace ncore
 
 #else
 
-
 namespace ncore
 {
     namespace nsensors
