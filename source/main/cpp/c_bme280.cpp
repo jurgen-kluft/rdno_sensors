@@ -1,4 +1,3 @@
-
 #ifdef TARGET_ESP32
 
 #include "Arduino.h"
@@ -136,13 +135,10 @@ namespace nbme280
     public:
         // Constructor used to create the class.
         // All parameters have default values.
-        BME280(const Settings& settings, IReadWriteRegister* readWrite = nullptr)
-            : m_settings(settings)
-            , m_readWriteReg(readWrite)
-            , m_initialized(false) {};
-
+        BME280(const Settings& settings);
+    
         // Method used to initialize the class.
-        bool begin();
+        bool begin(IReadWriteRegister* readWrite);
 
         // Read the temperature from the BME280 and return a float.
         float temp(TempUnit unit = TempUnit_Celsius);
@@ -282,8 +278,10 @@ namespace nbme280
         WriteSettings();
     }
 
-    bool BME280::begin()
+    bool BME280::begin(IReadWriteRegister* readWrite)
     {
+        m_readWriteReg = readWrite;
+
         bool success = Initialize();
         success &= m_initialized;
 
@@ -560,24 +558,29 @@ namespace nbme280
 }  // namespace nbme280
 
 #include "rdno_sensors/c_bme280.h"
+#include "rdno_core/c_allocator.h"
 
 namespace ncore
 {
     namespace nsensors
     {
-        static nbme280::BME280* bme280 = nullptr;
+        nbme280::Bme280ReadWriteI2CRegister* gReadWriteRegister = nullptr;
+        nbme280::BME280* gBme280 = nullptr;
 
         bool initBME280(alloc_t* allocator, u8 i2c_address)
         {
-            return false;
+            gReadWriteRegister = allocator->construct<nbme280::Bme280ReadWriteI2CRegister>(i2c_address);
+            nbme280::Settings settings;
+            gBme280 = allocator->construct<nbme280::BME280>(settings);
+            return gBme280->begin(gReadWriteRegister);
         }
 
         void updateBME280(f32& outPressure, f32& outTemperature, f32& outHumidity)
         {
-            if (bme280)
+            if (gBme280)
             {
                 float pressure, temperature, humidity;
-                bme280->read(pressure, temperature, humidity);
+                gBme280->read(pressure, temperature, humidity);
                 outPressure    = pressure;
                 outTemperature = temperature;
                 outHumidity    = humidity;

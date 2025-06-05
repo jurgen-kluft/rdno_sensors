@@ -1,3 +1,8 @@
-# rdno_network
+# rdno_sensors
 
-Arduino Network library (encapsulated)
+Arduino Sensor Library supporting the following sensors:
+
+- SCD41
+- BH1750
+- BME280
+

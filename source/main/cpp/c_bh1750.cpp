@@ -361,6 +361,9 @@ namespace ncore
         struct Bh1750Sensor
         {
             Bh1750Sensor() : m_Lux(42) {}
+
+            DCORE_CLASS_PLACEMENT_NEW_DELETE
+            
             s32 m_Lux;
         };
 

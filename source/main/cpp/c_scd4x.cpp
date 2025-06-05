@@ -1,6 +1,3 @@
-#include "rdno_sensors/c_scd4x.h"
-#include "rdno_core/c_allocator.h"
-
 #ifdef TARGET_ESP32
 
 // Note: There is a lot of code here, the only realy dependency on Arduino is the
@@ -49,1727 +46,1729 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-
-enum HighLevelError : uint16_t
+namespace nscd4x
 {
-    // general errors
-    NoError      = 0,
-    WriteError   = 0x0100,
-    ReadError    = 0x0200,
-    TxFrameError = 0x0300,
-    RxFrameError = 0x0400,
-    // shdlc errors
-    ExecutionError = 0x0500,
-    // i2c errors
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
 
-    // Sensor specific errors. All errors higher than that are depending on the
-    // sensor used.
-    SensorSpecificError = 0x8000,
-};
+    enum HighLevelError : uint16_t
+    {
+        // general errors
+        NoError      = 0,
+        WriteError   = 0x0100,
+        ReadError    = 0x0200,
+        TxFrameError = 0x0300,
+        RxFrameError = 0x0400,
+        // shdlc errors
+        ExecutionError = 0x0500,
+        // i2c errors
 
-enum LowLevelError : uint8_t
-{
-    // general errors
-    Undefined = 0,
-    NonemptyFrameError,
-    NoDataError,
-    BufferSizeError,
-    // shdlc errors
-    StopByteError,
-    ChecksumError,
-    TimeoutError,
-    RxCommandError,
-    RxAddressError,
-    SerialWriteError,
-    // i2c errors
-    WrongNumberBytesError,
-    CRCError,
-    I2cAddressNack,
-    I2cDataNack,
-    I2cOtherError,
-    NotEnoughDataError,
-    InternalBufferSizeError,
-};
+        // Sensor specific errors. All errors higher than that are depending on the
+        // sensor used.
+        SensorSpecificError = 0x8000,
+    };
 
-/**
- * errorToString() - Convert error code to a human readable error message
- *
- * @param error            Error code to be converted.
- * @param errorMessage     String where the error text can be
- *                         stored.
- * @param errorMessageSize Size in bytes of the string buffer for the error
- *                         message.
- */
-void errorToString(uint16_t error, char errorMessage[], size_t errorMessageSize);
-
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-
-enum CrcPolynomial : uint8_t
-{
-    CRC31_00 = 0x0,
-    CRC31_ff = 0x1,
-};
-
-uint8_t generateCRCGeneric(const uint8_t *data, size_t count, uint8_t init, uint8_t polynomial);
-uint8_t generateCRC31_ff(const uint8_t *data, size_t count);
-uint8_t generateCRC31_00(const uint8_t *data, size_t count);
-
-/**
- * @brief Generate a crc for data given a polynomial type
- *
- * @param data data to calculate CRC for
- * @param count the array size of data
- * @param poly CRC polynomal to use
- */
-uint8_t generateCRC(const uint8_t *data, size_t count, CrcPolynomial type);
-
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-
-/**
- * @brief
- *
- */
-typedef enum : uint16_t
-{
-    Byte        = 1,
-    Short       = 2,
-    Integer     = 4,
-    LongInteger = 8
-} IntegerType;
-
-/**
- * SenirionRxFrame - Base class for SensirionShdlcRxFrame and
- * SensirionI2cRxFrame. It decodes received data into common data types. The
- * data is contained in a buffer which is filled by the one of the two
- * communication classes. By calling the different decode function the raw data
- * can be decoded into different data types.
- */
-class SensirionRxFrame
-{
-    friend class SensirionI2CCommunication;
-    friend class SensirionShdlcCommunication;
-
-public:
-    /**
-     * Constructor
-     *
-     * @param buffer     Buffer in which the receive frame will be stored.
-     * @param bufferSize Number of bytes in the buffer for the receive frame.
-     */
-    SensirionRxFrame(uint8_t buffer[], size_t bufferSize);
+    enum LowLevelError : uint8_t
+    {
+        // general errors
+        Undefined = 0,
+        NonemptyFrameError,
+        NoDataError,
+        BufferSizeError,
+        // shdlc errors
+        StopByteError,
+        ChecksumError,
+        TimeoutError,
+        RxCommandError,
+        RxAddressError,
+        SerialWriteError,
+        // i2c errors
+        WrongNumberBytesError,
+        CRCError,
+        I2cAddressNack,
+        I2cDataNack,
+        I2cOtherError,
+        NotEnoughDataError,
+        InternalBufferSizeError,
+    };
 
     /**
-     * getInteger() - Read an integer value of specified type.
+     * errorToString() - Convert error code to a human readable error message
      *
-     * If number of bytes is less than the size of the specified integer, the
-     * value is padded with 0.
-     *
-     * @param destination Pointer to the integer number that shall be read
-     * @param type  specified integer type
-     * @param nrOfBytes Number of bytes read from the buffer. If nrOfBytes is
-     *                  less than the size of the integer value, the value is
-     *                  padded with 0.
-     * @return NoError if the integer can be read from the receive buffer;
-     *         Otherwise a RxFrameError is returned.
+     * @param error            Error code to be converted.
+     * @param errorMessage     String where the error text can be
+     *                         stored.
+     * @param errorMessageSize Size in bytes of the string buffer for the error
+     *                         message.
      */
-    uint16_t getInteger(uint8_t *destination, IntegerType type, uint8_t nrOfBytes);
+    void errorToString(uint16_t error, char errorMessage[], size_t errorMessageSize);
+
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+
+    enum CrcPolynomial : uint8_t
+    {
+        CRC31_00 = 0x0,
+        CRC31_ff = 0x1,
+    };
+
+    uint8_t generateCRCGeneric(const uint8_t *data, size_t count, uint8_t init, uint8_t polynomial);
+    uint8_t generateCRC31_ff(const uint8_t *data, size_t count);
+    uint8_t generateCRC31_00(const uint8_t *data, size_t count);
 
     /**
-     * getUInt32() - Get unsigned 32bit integer from the received data.
+     * @brief Generate a crc for data given a polynomial type
      *
-     * @param data Memory to store unsigned 32bit integer in.
-     *
-     * @return     NoError on success, an error code otherwise
+     * @param data data to calculate CRC for
+     * @param count the array size of data
+     * @param poly CRC polynomal to use
      */
-    uint16_t getUInt32(uint32_t &data);
+    uint8_t generateCRC(const uint8_t *data, size_t count, CrcPolynomial type);
+
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
 
     /**
-     * getInt32() - Get signed 32bit integer from the received data.
+     * @brief
      *
-     * @param data Memory to store signed 32bit integer in.
-     *
-     * @return     NoError on success, an error code otherwise
      */
-    uint16_t getInt32(int32_t &data);
+    typedef enum : uint16_t
+    {
+        Byte        = 1,
+        Short       = 2,
+        Integer     = 4,
+        LongInteger = 8
+    } IntegerType;
 
     /**
-     * getUInt16() - Get unsigned 16bit integer from the received data.
-     *
-     * @param data Memory to store unsigned 16bit integer in.
-     *
-     * @return     NoError on success, an error code otherwise
+     * SenirionRxFrame - Base class for SensirionShdlcRxFrame and
+     * SensirionI2cRxFrame. It decodes received data into common data types. The
+     * data is contained in a buffer which is filled by the one of the two
+     * communication classes. By calling the different decode function the raw data
+     * can be decoded into different data types.
      */
-    uint16_t getUInt16(uint16_t &data);
+    class SensirionRxFrame
+    {
+        friend class SensirionI2CCommunication;
+        friend class SensirionShdlcCommunication;
+
+    public:
+        /**
+         * Constructor
+         *
+         * @param buffer     Buffer in which the receive frame will be stored.
+         * @param bufferSize Number of bytes in the buffer for the receive frame.
+         */
+        SensirionRxFrame(uint8_t buffer[], size_t bufferSize);
+
+        /**
+         * getInteger() - Read an integer value of specified type.
+         *
+         * If number of bytes is less than the size of the specified integer, the
+         * value is padded with 0.
+         *
+         * @param destination Pointer to the integer number that shall be read
+         * @param type  specified integer type
+         * @param nrOfBytes Number of bytes read from the buffer. If nrOfBytes is
+         *                  less than the size of the integer value, the value is
+         *                  padded with 0.
+         * @return NoError if the integer can be read from the receive buffer;
+         *         Otherwise a RxFrameError is returned.
+         */
+        uint16_t getInteger(uint8_t *destination, IntegerType type, uint8_t nrOfBytes);
+
+        /**
+         * getUInt32() - Get unsigned 32bit integer from the received data.
+         *
+         * @param data Memory to store unsigned 32bit integer in.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t getUInt32(uint32_t &data);
+
+        /**
+         * getInt32() - Get signed 32bit integer from the received data.
+         *
+         * @param data Memory to store signed 32bit integer in.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t getInt32(int32_t &data);
+
+        /**
+         * getUInt16() - Get unsigned 16bit integer from the received data.
+         *
+         * @param data Memory to store unsigned 16bit integer in.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t getUInt16(uint16_t &data);
+
+        /**
+         * getInt16() - Get signed 16bit integer from the received data.
+         *
+         * @param data Memory to store signed 16bit integer in.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t getInt16(int16_t &data);
+
+        /**
+         * getUInt8() - Get unsigned 8bit integer from the received data.
+         *
+         * @param data Memory to store unsigned 8bit integer in.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t getUInt8(uint8_t &data);
+
+        /**
+         * getInt8() - Get signed 8bit integer from the received data.
+         *
+         * @param data Memory to store signed 8bit integer in.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t getInt8(int8_t &data);
+
+        /**
+         * getBool() - Get Boolean from the received data.
+         *
+         * @param data Memory to store boolean in.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t getBool(bool &data);
+
+        /**
+         * getFloat() - Get float from the received data.
+         *
+         * @param data Memory to store float in.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t getFloat(float &data);
+
+        /**
+         * getBytes() - Get an array of bytes from the received data.
+         *
+         * @param data     Buffer to store the bytes in.
+         * @param maxBytes Maximal amount of bytes to read from the received data.
+         *
+         * @return          NoError on success, an error code otherwise
+         */
+        uint16_t getBytes(uint8_t data[], size_t maxBytes);
+
+    private:
+        uint8_t *_buffer     = 0;
+        size_t   _bufferSize = 0;
+        size_t   _index      = 0;
+        size_t   _numBytes   = 0;
+    };
+
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
 
     /**
-     * getInt16() - Get signed 16bit integer from the received data.
-     *
-     * @param data Memory to store signed 16bit integer in.
-     *
-     * @return     NoError on success, an error code otherwise
+     * SenirionI2CRxFrame - Class which decodes the through I2C received data into
+     * common data types. It contains a buffer which is filled by the
+     * SensirionI2CCommunication class. By calling the different decode function
+     * inherited from the SensirionRxFrame base class the raw data can be decoded
+     * into different data types.
      */
-    uint16_t getInt16(int16_t &data);
+    class SensirionI2CRxFrame : public SensirionRxFrame
+    {
+        friend class SensirionI2CCommunication;
 
-    /**
-     * getUInt8() - Get unsigned 8bit integer from the received data.
-     *
-     * @param data Memory to store unsigned 8bit integer in.
-     *
-     * @return     NoError on success, an error code otherwise
+    public:
+        /**
+         * Constructor
+         *
+         * @param buffer     Buffer in which the receive frame will be
+         *                   stored.
+         * @param bufferSize Number of bytes in the buffer for the receive frame.
+         *
+         */
+        SensirionI2CRxFrame(uint8_t buffer[], size_t bufferSize)
+            : SensirionRxFrame(buffer, bufferSize) {};
+    };
+
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+
+    /*
+     * SensirionI2CTxFrame - Class which helps to build a correct I2C frame for
+     * Sensirion Sensors. The different addDatatype() functions add the frame data
+     * and the addCommand() function writes the command at the beginning. Using
+     * these functions one can easily construct a I2C frame for Sensirion sensors.
      */
-    uint16_t getUInt8(uint8_t &data);
+    class SensirionI2CTxFrame
+    {
+        friend class SensirionI2CCommunication;
 
-    /**
-     * getInt8() - Get signed 8bit integer from the received data.
-     *
-     * @param data Memory to store signed 8bit integer in.
-     *
-     * @return     NoError on success, an error code otherwise
+    public:
+        /**
+         * Factory to create a SensirionI2CTxFrame using a UInt8 command.
+         *
+         * @param command    Command to add to the send frame.
+         * @param buffer     Buffer in which the send frame will be stored.
+         * @param bufferSize Number of bytes in the buffer for the send frame.
+         * @param poly       CRC polynomal to use. Defaults to 0x31 with init 0xFF
+         *
+         * @return the constructed SensirionI2CTxFrame.
+         */
+        static SensirionI2CTxFrame createWithUInt8Command(uint8_t command, uint8_t buffer[], size_t bufferSize, CrcPolynomial poly = CRC31_ff);
+
+        /**
+         * Factory to create a SensirionI2CTxFrame using a UInt16 command.
+         *
+         * @param command    Command to add to the send frame.
+         * @param buffer     Buffer in which the send frame will be stored.
+         * @param bufferSize Number of bytes in the buffer for the send frame.
+         * @param poly       CRC polynomal to use. Defaults to 0x31 with init 0xFF
+         *
+         * @return the constructed SensirionI2CTxFrame.
+         */
+        static SensirionI2CTxFrame createWithUInt16Command(uint16_t command, uint8_t buffer[], size_t bufferSize, CrcPolynomial poly = CRC31_ff);
+
+        /**
+         * Constructor
+         *
+         * @param buffer     Buffer in which the send frame will be stored.
+         * @param bufferSize Number of bytes in the buffer for the send frame.
+         * @param poly       CRC polynomal to use. Defaults to 0x31 with init 0xFF
+         *
+         * @deprecated Use createWithUInt16Command() instead
+         */
+        SensirionI2CTxFrame(uint8_t buffer[], size_t bufferSize, CrcPolynomial poly = CRC31_ff);
+
+        /**
+         * addCommand() - Add command to the send frame.
+         *
+         * @param command Command to add to the send frame.
+         *
+         * @return        NoError on success, an error code otherwise
+         *
+         * @deprecated Use createWithUInt16Command() instead
+         */
+        uint16_t addCommand(uint16_t command);
+
+        /**
+         * addUInt32() - Add unsigned 32bit integer to the send frame.
+         *
+         * @param data Unsigned 32bit integer to add to the send frame.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t addUInt32(uint32_t data);
+
+        /**
+         * addInt32() - Add signed 32bit integer to the send frame.
+         *
+         * @param data Signed 32bit integer to add to the send frame.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t addInt32(int32_t data);
+
+        /**
+         * addUInt16() - Add unsigned 16bit integer to the send frame.
+         *
+         * @param data Unsigned 16bit integer to add to the send frame.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t addUInt16(uint16_t data);
+
+        /**
+         * addInt16() - Add signed 16bit integer to the send frame.
+         *
+         * @param data Signed 16bit integer to add to the send frame.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t addInt16(int16_t data);
+
+        /**
+         * addUInt8() - Add unsigned 8bit integer to the send frame.
+         *
+         * @param data Unsigned 8bit integer to add to the send frame.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t addUInt8(uint8_t data);
+
+        /**
+         * addInt8() - Add signed 8bit integer to the send frame.
+         *
+         * @param data Signed 8bit integer to add to the send frame.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t addInt8(int8_t data);
+
+        /**
+         * addBool() - Add boolean to the send frame.
+         *
+         * @param data Boolean to add to the send frame.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t addBool(bool data);
+
+        /**
+         * addFloat() - Add float to the send frame.
+         *
+         * @param data Float to add to the send frame.
+         *
+         * @return     NoError on success, an error code otherwise
+         */
+        uint16_t addFloat(float data);
+
+        /**
+         * addBytes() - Add byte array to the send frame.
+         *
+         * @param data       Byte array to add to the send frame.
+         * @param dataLength Number of bytes to add to the send frame.
+         *
+         * @return           NoError on success, an error code otherwise
+         */
+        uint16_t addBytes(const uint8_t data[], size_t dataLength);
+
+    private:
+        SensirionI2CTxFrame(uint8_t buffer[], size_t bufferSize, size_t numCommandBytes, CrcPolynomial poly = CRC31_ff);
+
+        uint16_t _addByte(uint8_t data);
+
+        uint8_t      *_buffer;
+        size_t        _bufferSize;
+        size_t        _index;
+        size_t        _numCommandBytes;
+        CrcPolynomial _polynomial_type;
+    };
+
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+    /*
+     * SensirionI2CCommunication - Class which is responsible for the communication
+     * via a I2C bus. It provides functionality to send and receive frames from a
+     * Sensirion sensor. The data is sent and received in a SensirionI2cTxFrame or
+     * SensirionI2cRxFrame respectively.
      */
-    uint16_t getInt8(int8_t &data);
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+    class SensirionI2CCommunication
+    {
+    public:
+        /**
+         * sendFrame() - Sends frame to sensor
+         *
+         * @param address I2C address of the sensor.
+         * @param frame   Tx frame object containing a finished frame to send to
+         *                the sensor.
+         * @param i2cBus  TwoWire object to communicate with the sensor.
+         *
+         * @return        NoError on success, an error code otherwise
+         */
+        static uint16_t sendFrame(uint8_t address, SensirionI2CTxFrame &frame, TwoWire &i2cBus);
 
-    /**
-     * getBool() - Get Boolean from the received data.
-     *
-     * @param data Memory to store boolean in.
-     *
-     * @return     NoError on success, an error code otherwise
-     */
-    uint16_t getBool(bool &data);
-
-    /**
-     * getFloat() - Get float from the received data.
-     *
-     * @param data Memory to store float in.
-     *
-     * @return     NoError on success, an error code otherwise
-     */
-    uint16_t getFloat(float &data);
-
-    /**
-     * getBytes() - Get an array of bytes from the received data.
-     *
-     * @param data     Buffer to store the bytes in.
-     * @param maxBytes Maximal amount of bytes to read from the received data.
-     *
-     * @return          NoError on success, an error code otherwise
-     */
-    uint16_t getBytes(uint8_t data[], size_t maxBytes);
-
-private:
-    uint8_t *_buffer     = 0;
-    size_t   _bufferSize = 0;
-    size_t   _index      = 0;
-    size_t   _numBytes   = 0;
-};
-
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-
-/**
- * SenirionI2CRxFrame - Class which decodes the through I2C received data into
- * common data types. It contains a buffer which is filled by the
- * SensirionI2CCommunication class. By calling the different decode function
- * inherited from the SensirionRxFrame base class the raw data can be decoded
- * into different data types.
- */
-class SensirionI2CRxFrame : public SensirionRxFrame
-{
-    friend class SensirionI2CCommunication;
-
-public:
-    /**
-     * Constructor
-     *
-     * @param buffer     Buffer in which the receive frame will be
-     *                   stored.
-     * @param bufferSize Number of bytes in the buffer for the receive frame.
-     *
-     */
-    SensirionI2CRxFrame(uint8_t buffer[], size_t bufferSize)
-        : SensirionRxFrame(buffer, bufferSize) {};
-};
-
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-
-/*
- * SensirionI2CTxFrame - Class which helps to build a correct I2C frame for
- * Sensirion Sensors. The different addDatatype() functions add the frame data
- * and the addCommand() function writes the command at the beginning. Using
- * these functions one can easily construct a I2C frame for Sensirion sensors.
- */
-class SensirionI2CTxFrame
-{
-    friend class SensirionI2CCommunication;
-
-public:
-    /**
-     * Factory to create a SensirionI2CTxFrame using a UInt8 command.
-     *
-     * @param command    Command to add to the send frame.
-     * @param buffer     Buffer in which the send frame will be stored.
-     * @param bufferSize Number of bytes in the buffer for the send frame.
-     * @param poly       CRC polynomal to use. Defaults to 0x31 with init 0xFF
-     *
-     * @return the constructed SensirionI2CTxFrame.
-     */
-    static SensirionI2CTxFrame createWithUInt8Command(uint8_t command, uint8_t buffer[], size_t bufferSize, CrcPolynomial poly = CRC31_ff);
-
-    /**
-     * Factory to create a SensirionI2CTxFrame using a UInt16 command.
-     *
-     * @param command    Command to add to the send frame.
-     * @param buffer     Buffer in which the send frame will be stored.
-     * @param bufferSize Number of bytes in the buffer for the send frame.
-     * @param poly       CRC polynomal to use. Defaults to 0x31 with init 0xFF
-     *
-     * @return the constructed SensirionI2CTxFrame.
-     */
-    static SensirionI2CTxFrame createWithUInt16Command(uint16_t command, uint8_t buffer[], size_t bufferSize, CrcPolynomial poly = CRC31_ff);
-
-    /**
-     * Constructor
-     *
-     * @param buffer     Buffer in which the send frame will be stored.
-     * @param bufferSize Number of bytes in the buffer for the send frame.
-     * @param poly       CRC polynomal to use. Defaults to 0x31 with init 0xFF
-     *
-     * @deprecated Use createWithUInt16Command() instead
-     */
-    SensirionI2CTxFrame(uint8_t buffer[], size_t bufferSize, CrcPolynomial poly = CRC31_ff);
-
-    /**
-     * addCommand() - Add command to the send frame.
-     *
-     * @param command Command to add to the send frame.
-     *
-     * @return        NoError on success, an error code otherwise
-     *
-     * @deprecated Use createWithUInt16Command() instead
-     */
-    uint16_t addCommand(uint16_t command);
-
-    /**
-     * addUInt32() - Add unsigned 32bit integer to the send frame.
-     *
-     * @param data Unsigned 32bit integer to add to the send frame.
-     *
-     * @return     NoError on success, an error code otherwise
-     */
-    uint16_t addUInt32(uint32_t data);
-
-    /**
-     * addInt32() - Add signed 32bit integer to the send frame.
-     *
-     * @param data Signed 32bit integer to add to the send frame.
-     *
-     * @return     NoError on success, an error code otherwise
-     */
-    uint16_t addInt32(int32_t data);
-
-    /**
-     * addUInt16() - Add unsigned 16bit integer to the send frame.
-     *
-     * @param data Unsigned 16bit integer to add to the send frame.
-     *
-     * @return     NoError on success, an error code otherwise
-     */
-    uint16_t addUInt16(uint16_t data);
-
-    /**
-     * addInt16() - Add signed 16bit integer to the send frame.
-     *
-     * @param data Signed 16bit integer to add to the send frame.
-     *
-     * @return     NoError on success, an error code otherwise
-     */
-    uint16_t addInt16(int16_t data);
-
-    /**
-     * addUInt8() - Add unsigned 8bit integer to the send frame.
-     *
-     * @param data Unsigned 8bit integer to add to the send frame.
-     *
-     * @return     NoError on success, an error code otherwise
-     */
-    uint16_t addUInt8(uint8_t data);
-
-    /**
-     * addInt8() - Add signed 8bit integer to the send frame.
-     *
-     * @param data Signed 8bit integer to add to the send frame.
-     *
-     * @return     NoError on success, an error code otherwise
-     */
-    uint16_t addInt8(int8_t data);
-
-    /**
-     * addBool() - Add boolean to the send frame.
-     *
-     * @param data Boolean to add to the send frame.
-     *
-     * @return     NoError on success, an error code otherwise
-     */
-    uint16_t addBool(bool data);
-
-    /**
-     * addFloat() - Add float to the send frame.
-     *
-     * @param data Float to add to the send frame.
-     *
-     * @return     NoError on success, an error code otherwise
-     */
-    uint16_t addFloat(float data);
-
-    /**
-     * addBytes() - Add byte array to the send frame.
-     *
-     * @param data       Byte array to add to the send frame.
-     * @param dataLength Number of bytes to add to the send frame.
-     *
-     * @return           NoError on success, an error code otherwise
-     */
-    uint16_t addBytes(const uint8_t data[], size_t dataLength);
-
-private:
-    SensirionI2CTxFrame(uint8_t buffer[], size_t bufferSize, size_t numCommandBytes, CrcPolynomial poly = CRC31_ff);
-
-    uint16_t _addByte(uint8_t data);
-
-    uint8_t      *_buffer;
-    size_t        _bufferSize;
-    size_t        _index;
-    size_t        _numCommandBytes;
-    CrcPolynomial _polynomial_type;
-};
-
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-/*
- * SensirionI2CCommunication - Class which is responsible for the communication
- * via a I2C bus. It provides functionality to send and receive frames from a
- * Sensirion sensor. The data is sent and received in a SensirionI2cTxFrame or
- * SensirionI2cRxFrame respectively.
- */
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-class SensirionI2CCommunication
-{
-public:
-    /**
-     * sendFrame() - Sends frame to sensor
-     *
-     * @param address I2C address of the sensor.
-     * @param frame   Tx frame object containing a finished frame to send to
-     *                the sensor.
-     * @param i2cBus  TwoWire object to communicate with the sensor.
-     *
-     * @return        NoError on success, an error code otherwise
-     */
-    static uint16_t sendFrame(uint8_t address, SensirionI2CTxFrame &frame, TwoWire &i2cBus);
-
-    /**
-     * receiveFrame() - Receive Frame from sensor
-     *
-     * @param address  I2C address of the sensor.
-     * @param numBytes Number of bytes to receive.
-     * @param frame    Rx frame to store the received data in.
-     * @param i2cBus   TwoWire object to communicate with the sensor.
-     * @param poly     CRC polynomal to use. Defaults to 0x31 with init 0xFF
-     *
-     * @return        NoError on success, an error code otherwise
-     */
-    static uint16_t receiveFrame(uint8_t address, size_t numBytes, SensirionI2CRxFrame &frame, TwoWire &i2cBus, CrcPolynomial poly = CRC31_ff);
-};
+        /**
+         * receiveFrame() - Receive Frame from sensor
+         *
+         * @param address  I2C address of the sensor.
+         * @param numBytes Number of bytes to receive.
+         * @param frame    Rx frame to store the received data in.
+         * @param i2cBus   TwoWire object to communicate with the sensor.
+         * @param poly     CRC polynomal to use. Defaults to 0x31 with init 0xFF
+         *
+         * @return        NoError on success, an error code otherwise
+         */
+        static uint16_t receiveFrame(uint8_t address, size_t numBytes, SensirionI2CRxFrame &frame, TwoWire &i2cBus, CrcPolynomial poly = CRC31_ff);
+    };
 
 #    define SCD40_I2C_ADDR_62 0x62
 #    define SCD41_I2C_ADDR_62 0x62
 
-typedef enum
-{
-    SCD4X_START_PERIODIC_MEASUREMENT_CMD_ID                     = 0x21b1,
-    SCD4X_READ_MEASUREMENT_RAW_CMD_ID                           = 0xec05,
-    SCD4X_STOP_PERIODIC_MEASUREMENT_CMD_ID                      = 0x3f86,
-    SCD4X_SET_TEMPERATURE_OFFSET_RAW_CMD_ID                     = 0x241d,
-    SCD4X_GET_TEMPERATURE_OFFSET_RAW_CMD_ID                     = 0x2318,
-    SCD4X_SET_SENSOR_ALTITUDE_CMD_ID                            = 0x2427,
-    SCD4X_GET_SENSOR_ALTITUDE_CMD_ID                            = 0x2322,
-    SCD4X_SET_AMBIENT_PRESSURE_RAW_CMD_ID                       = 0xe000,
-    SCD4X_GET_AMBIENT_PRESSURE_RAW_CMD_ID                       = 0xe000,
-    SCD4X_PERFORM_FORCED_RECALIBRATION_CMD_ID                   = 0x362f,
-    SCD4X_SET_AUTOMATIC_SELF_CALIBRATION_ENABLED_CMD_ID         = 0x2416,
-    SCD4X_GET_AUTOMATIC_SELF_CALIBRATION_ENABLED_CMD_ID         = 0x2313,
-    SCD4X_SET_AUTOMATIC_SELF_CALIBRATION_TARGET_CMD_ID          = 0x243a,
-    SCD4X_GET_AUTOMATIC_SELF_CALIBRATION_TARGET_CMD_ID          = 0x233f,
-    SCD4X_START_LOW_POWER_PERIODIC_MEASUREMENT_CMD_ID           = 0x21ac,
-    SCD4X_GET_DATA_READY_STATUS_RAW_CMD_ID                      = 0xe4b8,
-    SCD4X_PERSIST_SETTINGS_CMD_ID                               = 0x3615,
-    SCD4X_GET_SERIAL_NUMBER_CMD_ID                              = 0x3682,
-    SCD4X_PERFORM_SELF_TEST_CMD_ID                              = 0x3639,
-    SCD4X_PERFORM_FACTORY_RESET_CMD_ID                          = 0x3632,
-    SCD4X_REINIT_CMD_ID                                         = 0x3646,
-    SCD4X_GET_SENSOR_VARIANT_RAW_CMD_ID                         = 0x202f,
-    SCD4X_MEASURE_SINGLE_SHOT_CMD_ID                            = 0x219d,
-    SCD4X_MEASURE_SINGLE_SHOT_RHT_ONLY_CMD_ID                   = 0x2196,
-    SCD4X_POWER_DOWN_CMD_ID                                     = 0x36e0,
-    SCD4X_WAKE_UP_CMD_ID                                        = 0x36f6,
-    SCD4X_SET_AUTOMATIC_SELF_CALIBRATION_INITIAL_PERIOD_CMD_ID  = 0x2445,
-    SCD4X_GET_AUTOMATIC_SELF_CALIBRATION_INITIAL_PERIOD_CMD_ID  = 0x2340,
-    SCD4X_SET_AUTOMATIC_SELF_CALIBRATION_STANDARD_PERIOD_CMD_ID = 0x244e,
-    SCD4X_GET_AUTOMATIC_SELF_CALIBRATION_STANDARD_PERIOD_CMD_ID = 0x234b,
-} SCD4xCmdId;
-
-typedef enum
-{
-    SCD4X_SENSOR_VARIANT_UNKNOWN = 0,
-    SCD4X_SENSOR_VARIANT_SCD40   = 1,
-    SCD4X_SENSOR_VARIANT_SCD41   = 2,
-} SCD4xSensorVariant;
-
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-// SensirionI2CCommunication
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-
-static void clearRxBuffer(TwoWire &i2cBus)
-{
-    while (i2cBus.available())
+    typedef enum
     {
-        (void)i2cBus.read();
-    }
-}
+        SCD4X_START_PERIODIC_MEASUREMENT_CMD_ID                     = 0x21b1,
+        SCD4X_READ_MEASUREMENT_RAW_CMD_ID                           = 0xec05,
+        SCD4X_STOP_PERIODIC_MEASUREMENT_CMD_ID                      = 0x3f86,
+        SCD4X_SET_TEMPERATURE_OFFSET_RAW_CMD_ID                     = 0x241d,
+        SCD4X_GET_TEMPERATURE_OFFSET_RAW_CMD_ID                     = 0x2318,
+        SCD4X_SET_SENSOR_ALTITUDE_CMD_ID                            = 0x2427,
+        SCD4X_GET_SENSOR_ALTITUDE_CMD_ID                            = 0x2322,
+        SCD4X_SET_AMBIENT_PRESSURE_RAW_CMD_ID                       = 0xe000,
+        SCD4X_GET_AMBIENT_PRESSURE_RAW_CMD_ID                       = 0xe000,
+        SCD4X_PERFORM_FORCED_RECALIBRATION_CMD_ID                   = 0x362f,
+        SCD4X_SET_AUTOMATIC_SELF_CALIBRATION_ENABLED_CMD_ID         = 0x2416,
+        SCD4X_GET_AUTOMATIC_SELF_CALIBRATION_ENABLED_CMD_ID         = 0x2313,
+        SCD4X_SET_AUTOMATIC_SELF_CALIBRATION_TARGET_CMD_ID          = 0x243a,
+        SCD4X_GET_AUTOMATIC_SELF_CALIBRATION_TARGET_CMD_ID          = 0x233f,
+        SCD4X_START_LOW_POWER_PERIODIC_MEASUREMENT_CMD_ID           = 0x21ac,
+        SCD4X_GET_DATA_READY_STATUS_RAW_CMD_ID                      = 0xe4b8,
+        SCD4X_PERSIST_SETTINGS_CMD_ID                               = 0x3615,
+        SCD4X_GET_SERIAL_NUMBER_CMD_ID                              = 0x3682,
+        SCD4X_PERFORM_SELF_TEST_CMD_ID                              = 0x3639,
+        SCD4X_PERFORM_FACTORY_RESET_CMD_ID                          = 0x3632,
+        SCD4X_REINIT_CMD_ID                                         = 0x3646,
+        SCD4X_GET_SENSOR_VARIANT_RAW_CMD_ID                         = 0x202f,
+        SCD4X_MEASURE_SINGLE_SHOT_CMD_ID                            = 0x219d,
+        SCD4X_MEASURE_SINGLE_SHOT_RHT_ONLY_CMD_ID                   = 0x2196,
+        SCD4X_POWER_DOWN_CMD_ID                                     = 0x36e0,
+        SCD4X_WAKE_UP_CMD_ID                                        = 0x36f6,
+        SCD4X_SET_AUTOMATIC_SELF_CALIBRATION_INITIAL_PERIOD_CMD_ID  = 0x2445,
+        SCD4X_GET_AUTOMATIC_SELF_CALIBRATION_INITIAL_PERIOD_CMD_ID  = 0x2340,
+        SCD4X_SET_AUTOMATIC_SELF_CALIBRATION_STANDARD_PERIOD_CMD_ID = 0x244e,
+        SCD4X_GET_AUTOMATIC_SELF_CALIBRATION_STANDARD_PERIOD_CMD_ID = 0x234b,
+    } SCD4xCmdId;
 
-uint16_t SensirionI2CCommunication::sendFrame(uint8_t address, SensirionI2CTxFrame &frame, TwoWire &i2cBus)
-{
-    i2cBus.beginTransmission(address);
-    size_t  writtenBytes = i2cBus.write(frame._buffer, frame._index);
-    uint8_t i2c_error    = i2cBus.endTransmission();
-    if (writtenBytes != frame._index)
+    typedef enum
     {
-        return WriteError | I2cOtherError;
-    }
-    // translate Arduino errors, see
-    // https://www.arduino.cc/en/Reference/WireEndTransmission
-    switch (i2c_error)
-    {
-        case 0: return NoError;
-        case 1: return WriteError | InternalBufferSizeError;
-        case 2: return WriteError | I2cAddressNack;
-        case 3: return WriteError | I2cDataNack;
-        default: return WriteError | I2cOtherError;
-    }
-}
+        SCD4X_SENSOR_VARIANT_UNKNOWN = 0,
+        SCD4X_SENSOR_VARIANT_SCD40   = 1,
+        SCD4X_SENSOR_VARIANT_SCD41   = 2,
+    } SCD4xSensorVariant;
 
-uint16_t SensirionI2CCommunication::receiveFrame(uint8_t address, size_t numBytes, SensirionI2CRxFrame &frame, TwoWire &i2cBus, CrcPolynomial poly)
-{
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+    // SensirionI2CCommunication
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+
+    static void clearRxBuffer(TwoWire &i2cBus)
+    {
+        while (i2cBus.available())
+        {
+            (void)i2cBus.read();
+        }
+    }
+
+    uint16_t SensirionI2CCommunication::sendFrame(uint8_t address, SensirionI2CTxFrame &frame, TwoWire &i2cBus)
+    {
+        i2cBus.beginTransmission(address);
+        size_t  writtenBytes = i2cBus.write(frame._buffer, frame._index);
+        uint8_t i2c_error    = i2cBus.endTransmission();
+        if (writtenBytes != frame._index)
+        {
+            return WriteError | I2cOtherError;
+        }
+        // translate Arduino errors, see
+        // https://www.arduino.cc/en/Reference/WireEndTransmission
+        switch (i2c_error)
+        {
+            case 0: return NoError;
+            case 1: return WriteError | InternalBufferSizeError;
+            case 2: return WriteError | I2cAddressNack;
+            case 3: return WriteError | I2cDataNack;
+            default: return WriteError | I2cOtherError;
+        }
+    }
+
+    uint16_t SensirionI2CCommunication::receiveFrame(uint8_t address, size_t numBytes, SensirionI2CRxFrame &frame, TwoWire &i2cBus, CrcPolynomial poly)
+    {
 #    ifdef I2C_BUFFER_LENGTH
-    const uint8_t sizeBuffer = (static_cast<uint8_t>(I2C_BUFFER_LENGTH) / static_cast<uint8_t>(3)) * 3;
+        const uint8_t sizeBuffer = (static_cast<uint8_t>(I2C_BUFFER_LENGTH) / static_cast<uint8_t>(3)) * 3;
 #    elif defined(BUFFER_LENGTH)
-    const uint8_t sizeBuffer = (static_cast<uint8_t>(BUFFER_LENGTH) / static_cast<uint8_t>(3)) * 3;
+        const uint8_t sizeBuffer = (static_cast<uint8_t>(BUFFER_LENGTH) / static_cast<uint8_t>(3)) * 3;
 #    else
-    const uint8_t sizeBuffer = 30;
+        const uint8_t sizeBuffer = 30;
 #    endif
 
-    if (numBytes % 3)
-    {
-        return ReadError | WrongNumberBytesError;
-    }
-    if ((numBytes / 3) * 2 > frame._bufferSize)
-    {
-        return ReadError | BufferSizeError;
-    }
-    size_t  i           = 0;
-    int16_t remaining   = numBytes;
-    uint8_t bytesToRead = sizeBuffer;
-    bool    stop        = bytesToRead >= remaining;
-    do
-    {
-        if (sizeBuffer >= remaining)
+        if (numBytes % 3)
         {
-            stop        = true;
-            bytesToRead = remaining;
+            return ReadError | WrongNumberBytesError;
         }
-        uint8_t available = i2cBus.requestFrom(address, bytesToRead, static_cast<uint8_t>(stop));
-        if (bytesToRead != available)
+        if ((numBytes / 3) * 2 > frame._bufferSize)
         {
-            return ReadError | NotEnoughDataError;
+            return ReadError | BufferSizeError;
         }
-        while (available > 0)
+        size_t  i           = 0;
+        int16_t remaining   = numBytes;
+        uint8_t bytesToRead = sizeBuffer;
+        bool    stop        = bytesToRead >= remaining;
+        do
         {
-            frame._buffer[i++]  = i2cBus.read();
-            frame._buffer[i++]  = i2cBus.read();
-            uint8_t actualCRC   = i2cBus.read();
-            uint8_t expectedCRC = generateCRC(&frame._buffer[i - 2], 2, poly);
-            if (actualCRC != expectedCRC)
+            if (sizeBuffer >= remaining)
             {
-                clearRxBuffer(i2cBus);
-                return ReadError | CRCError;
+                stop        = true;
+                bytesToRead = remaining;
             }
-            available -= 3;
-        }
-        remaining -= bytesToRead;
+            uint8_t available = i2cBus.requestFrom(address, bytesToRead, static_cast<uint8_t>(stop));
+            if (bytesToRead != available)
+            {
+                return ReadError | NotEnoughDataError;
+            }
+            while (available > 0)
+            {
+                frame._buffer[i++]  = i2cBus.read();
+                frame._buffer[i++]  = i2cBus.read();
+                uint8_t actualCRC   = i2cBus.read();
+                uint8_t expectedCRC = generateCRC(&frame._buffer[i - 2], 2, poly);
+                if (actualCRC != expectedCRC)
+                {
+                    clearRxBuffer(i2cBus);
+                    return ReadError | CRCError;
+                }
+                available -= 3;
+            }
+            remaining -= bytesToRead;
 
-    } while (remaining > 0);
-    frame._numBytes = i;
-    return NoError;
-}
+        } while (remaining > 0);
+        frame._numBytes = i;
+        return NoError;
+    }
 
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-// Errors
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+    // Errors
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
 
-void errorToString(uint16_t error, char errorMessage[], size_t errorMessageSize)
-{
-    uint16_t highLevelError = error & 0xFF00;
-    uint16_t lowLevelError  = error & 0x00FF;
-
-    if (error & HighLevelError::SensorSpecificError)
+    void errorToString(uint16_t error, char errorMessage[], size_t errorMessageSize)
     {
-        snprintf(errorMessage, errorMessageSize, "Sensor specific error: 0x%2x", lowLevelError);
+        uint16_t highLevelError = error & 0xFF00;
+        uint16_t lowLevelError  = error & 0x00FF;
+
+        if (error & HighLevelError::SensorSpecificError)
+        {
+            snprintf(errorMessage, errorMessageSize, "Sensor specific error: 0x%2x", lowLevelError);
+            return;
+        }
+
+        switch (highLevelError)
+        {
+            case HighLevelError::NoError:
+                if (!error)
+                {
+                    strncpy(errorMessage, "No error", errorMessageSize);
+                    return;
+                }
+                break;
+            case HighLevelError::WriteError:
+                switch (lowLevelError)
+                {
+                    case LowLevelError::Undefined: strncpy(errorMessage, "Write error", errorMessageSize); return;
+                    case LowLevelError::SerialWriteError: strncpy(errorMessage, "Error writing to serial", errorMessageSize); return;
+                    case LowLevelError::InternalBufferSizeError: strncpy(errorMessage, "Data too long to fit in transmit buffer", errorMessageSize); return;
+                    case LowLevelError::I2cAddressNack: strncpy(errorMessage, "Received NACK on transmit of address", errorMessageSize); return;
+                    case LowLevelError::I2cDataNack: strncpy(errorMessage, "Received NACK on transmit of data", errorMessageSize); return;
+                    case LowLevelError::I2cOtherError: strncpy(errorMessage, "Error writing to I2C bus", errorMessageSize); return;
+                }
+                break;
+            case HighLevelError::ReadError:
+                switch (lowLevelError)
+                {
+                    case LowLevelError::Undefined: strncpy(errorMessage, "Read error", errorMessageSize); return;
+                    case LowLevelError::NonemptyFrameError: strncpy(errorMessage, "Frame already contains data", errorMessageSize); return;
+                    case LowLevelError::TimeoutError: strncpy(errorMessage, "Timeout while reading data", errorMessageSize); return;
+                    case LowLevelError::ChecksumError: strncpy(errorMessage, "Checksum is wrong", errorMessageSize); return;
+                    case LowLevelError::CRCError: strncpy(errorMessage, "Wrong CRC found", errorMessageSize); return;
+                    case LowLevelError::WrongNumberBytesError: strncpy(errorMessage, "Number of bytes not a multiple of 3", errorMessageSize); return;
+                    case LowLevelError::NotEnoughDataError: strncpy(errorMessage, "Not enough data received", errorMessageSize); return;
+                    case LowLevelError::InternalBufferSizeError: strncpy(errorMessage, "Internal I2C buffer too small", errorMessageSize); return;
+                }
+                break;
+            case HighLevelError::ExecutionError:
+            {
+                char format[] = "Execution error, status register: 0x%x";
+                snprintf(errorMessage, errorMessageSize, format, lowLevelError);
+                return;
+            }
+            case HighLevelError::TxFrameError:
+                switch (lowLevelError)
+                {
+                    case LowLevelError::Undefined: strncpy(errorMessage, "Tx frame error", errorMessageSize); return;
+                    case LowLevelError::BufferSizeError: strncpy(errorMessage, "Not enough space in buffer", errorMessageSize); return;
+                }
+                break;
+            case HighLevelError::RxFrameError:
+                switch (lowLevelError)
+                {
+                    case LowLevelError::Undefined: strncpy(errorMessage, "Rx frame error", errorMessageSize); return;
+                    case LowLevelError::BufferSizeError: strncpy(errorMessage, "Not enough space in buffer", errorMessageSize); return;
+                    case LowLevelError::NoDataError: strncpy(errorMessage, "No more data in frame", errorMessageSize); return;
+                    case LowLevelError::RxAddressError: strncpy(errorMessage, "Wrong address in return frame", errorMessageSize); return;
+                    case LowLevelError::RxCommandError: strncpy(errorMessage, "Wrong command in return frame", errorMessageSize); return;
+                }
+        }
+        strncpy(errorMessage, "Error processing error", errorMessageSize);
         return;
     }
 
-    switch (highLevelError)
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+    // SensirionI2CTxFrame
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+
+    SensirionI2CTxFrame::SensirionI2CTxFrame(uint8_t buffer[], size_t bufferSize, size_t numCommandBytes, CrcPolynomial poly)
+        : _buffer(buffer)
+        , _bufferSize(bufferSize)
+        , _index(numCommandBytes)
+        , _numCommandBytes(numCommandBytes)
+        , _polynomial_type(poly)
     {
-        case HighLevelError::NoError:
-            if (!error)
-            {
-                strncpy(errorMessage, "No error", errorMessageSize);
-                return;
-            }
-            break;
-        case HighLevelError::WriteError:
-            switch (lowLevelError)
-            {
-                case LowLevelError::Undefined: strncpy(errorMessage, "Write error", errorMessageSize); return;
-                case LowLevelError::SerialWriteError: strncpy(errorMessage, "Error writing to serial", errorMessageSize); return;
-                case LowLevelError::InternalBufferSizeError: strncpy(errorMessage, "Data too long to fit in transmit buffer", errorMessageSize); return;
-                case LowLevelError::I2cAddressNack: strncpy(errorMessage, "Received NACK on transmit of address", errorMessageSize); return;
-                case LowLevelError::I2cDataNack: strncpy(errorMessage, "Received NACK on transmit of data", errorMessageSize); return;
-                case LowLevelError::I2cOtherError: strncpy(errorMessage, "Error writing to I2C bus", errorMessageSize); return;
-            }
-            break;
-        case HighLevelError::ReadError:
-            switch (lowLevelError)
-            {
-                case LowLevelError::Undefined: strncpy(errorMessage, "Read error", errorMessageSize); return;
-                case LowLevelError::NonemptyFrameError: strncpy(errorMessage, "Frame already contains data", errorMessageSize); return;
-                case LowLevelError::TimeoutError: strncpy(errorMessage, "Timeout while reading data", errorMessageSize); return;
-                case LowLevelError::ChecksumError: strncpy(errorMessage, "Checksum is wrong", errorMessageSize); return;
-                case LowLevelError::CRCError: strncpy(errorMessage, "Wrong CRC found", errorMessageSize); return;
-                case LowLevelError::WrongNumberBytesError: strncpy(errorMessage, "Number of bytes not a multiple of 3", errorMessageSize); return;
-                case LowLevelError::NotEnoughDataError: strncpy(errorMessage, "Not enough data received", errorMessageSize); return;
-                case LowLevelError::InternalBufferSizeError: strncpy(errorMessage, "Internal I2C buffer too small", errorMessageSize); return;
-            }
-            break;
-        case HighLevelError::ExecutionError:
+    }
+
+    SensirionI2CTxFrame::SensirionI2CTxFrame(uint8_t buffer[], size_t bufferSize, CrcPolynomial poly)
+        : SensirionI2CTxFrame(buffer, bufferSize, 2, poly)
+    {
+    }
+
+    SensirionI2CTxFrame SensirionI2CTxFrame::createWithUInt8Command(uint8_t command, uint8_t buffer[], size_t bufferSize, CrcPolynomial poly)
+    {
+        SensirionI2CTxFrame instance = SensirionI2CTxFrame(buffer, bufferSize, 1, poly);
+        instance._buffer[0]          = command;
+        return instance;
+    }
+
+    SensirionI2CTxFrame SensirionI2CTxFrame::createWithUInt16Command(uint16_t command, uint8_t buffer[], size_t bufferSize, CrcPolynomial poly)
+    {
+        SensirionI2CTxFrame instance = SensirionI2CTxFrame(buffer, bufferSize, 2, poly);
+        instance._buffer[0]          = static_cast<uint8_t>((command & 0xFF00) >> 8);
+        instance._buffer[1]          = static_cast<uint8_t>((command & 0x00FF) >> 0);
+        return instance;
+    }
+
+    uint16_t SensirionI2CTxFrame::addCommand(uint16_t command)
+    {
+        if (_bufferSize < 2)
         {
-            char format[] = "Execution error, status register: 0x%x";
-            snprintf(errorMessage, errorMessageSize, format, lowLevelError);
-            return;
+            return TxFrameError | BufferSizeError;
         }
-        case HighLevelError::TxFrameError:
-            switch (lowLevelError)
-            {
-                case LowLevelError::Undefined: strncpy(errorMessage, "Tx frame error", errorMessageSize); return;
-                case LowLevelError::BufferSizeError: strncpy(errorMessage, "Not enough space in buffer", errorMessageSize); return;
-            }
-            break;
-        case HighLevelError::RxFrameError:
-            switch (lowLevelError)
-            {
-                case LowLevelError::Undefined: strncpy(errorMessage, "Rx frame error", errorMessageSize); return;
-                case LowLevelError::BufferSizeError: strncpy(errorMessage, "Not enough space in buffer", errorMessageSize); return;
-                case LowLevelError::NoDataError: strncpy(errorMessage, "No more data in frame", errorMessageSize); return;
-                case LowLevelError::RxAddressError: strncpy(errorMessage, "Wrong address in return frame", errorMessageSize); return;
-                case LowLevelError::RxCommandError: strncpy(errorMessage, "Wrong command in return frame", errorMessageSize); return;
-            }
+        _buffer[0] = static_cast<uint8_t>((command & 0xFF00) >> 8);
+        _buffer[1] = static_cast<uint8_t>((command & 0x00FF) >> 0);
+        return NoError;
     }
-    strncpy(errorMessage, "Error processing error", errorMessageSize);
-    return;
-}
 
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-// SensirionI2CTxFrame
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-
-SensirionI2CTxFrame::SensirionI2CTxFrame(uint8_t buffer[], size_t bufferSize, size_t numCommandBytes, CrcPolynomial poly)
-    : _buffer(buffer)
-    , _bufferSize(bufferSize)
-    , _index(numCommandBytes)
-    , _numCommandBytes(numCommandBytes)
-    , _polynomial_type(poly)
-{
-}
-
-SensirionI2CTxFrame::SensirionI2CTxFrame(uint8_t buffer[], size_t bufferSize, CrcPolynomial poly)
-    : SensirionI2CTxFrame(buffer, bufferSize, 2, poly)
-{
-}
-
-SensirionI2CTxFrame SensirionI2CTxFrame::createWithUInt8Command(uint8_t command, uint8_t buffer[], size_t bufferSize, CrcPolynomial poly)
-{
-    SensirionI2CTxFrame instance = SensirionI2CTxFrame(buffer, bufferSize, 1, poly);
-    instance._buffer[0]          = command;
-    return instance;
-}
-
-SensirionI2CTxFrame SensirionI2CTxFrame::createWithUInt16Command(uint16_t command, uint8_t buffer[], size_t bufferSize, CrcPolynomial poly)
-{
-    SensirionI2CTxFrame instance = SensirionI2CTxFrame(buffer, bufferSize, 2, poly);
-    instance._buffer[0]          = static_cast<uint8_t>((command & 0xFF00) >> 8);
-    instance._buffer[1]          = static_cast<uint8_t>((command & 0x00FF) >> 0);
-    return instance;
-}
-
-uint16_t SensirionI2CTxFrame::addCommand(uint16_t command)
-{
-    if (_bufferSize < 2)
+    uint16_t SensirionI2CTxFrame::addUInt32(uint32_t data)
     {
-        return TxFrameError | BufferSizeError;
+        uint16_t error = _addByte(static_cast<uint8_t>((data & 0xFF000000) >> 24));
+        error |= _addByte(static_cast<uint8_t>((data & 0x00FF0000) >> 16));
+        error |= _addByte(static_cast<uint8_t>((data & 0x0000FF00) >> 8));
+        error |= _addByte(static_cast<uint8_t>((data & 0x000000FF) >> 0));
+        return error;
     }
-    _buffer[0] = static_cast<uint8_t>((command & 0xFF00) >> 8);
-    _buffer[1] = static_cast<uint8_t>((command & 0x00FF) >> 0);
-    return NoError;
-}
 
-uint16_t SensirionI2CTxFrame::addUInt32(uint32_t data)
-{
-    uint16_t error = _addByte(static_cast<uint8_t>((data & 0xFF000000) >> 24));
-    error |= _addByte(static_cast<uint8_t>((data & 0x00FF0000) >> 16));
-    error |= _addByte(static_cast<uint8_t>((data & 0x0000FF00) >> 8));
-    error |= _addByte(static_cast<uint8_t>((data & 0x000000FF) >> 0));
-    return error;
-}
-
-uint16_t SensirionI2CTxFrame::addInt32(int32_t data) { return addUInt32(static_cast<uint32_t>(data)); }
-uint16_t SensirionI2CTxFrame::addUInt16(uint16_t data)
-{
-    uint16_t error = _addByte(static_cast<uint8_t>((data & 0xFF00) >> 8));
-    error |= _addByte(static_cast<uint8_t>((data & 0x00FF) >> 0));
-    return error;
-}
-
-uint16_t SensirionI2CTxFrame::addInt16(int16_t data) { return addUInt16(static_cast<uint16_t>(data)); }
-uint16_t SensirionI2CTxFrame::addUInt8(uint8_t data) { return _addByte(data); }
-uint16_t SensirionI2CTxFrame::addInt8(int8_t data) { return _addByte(static_cast<uint8_t>(data)); }
-uint16_t SensirionI2CTxFrame::addBool(bool data) { return _addByte(static_cast<uint8_t>(data)); }
-
-uint16_t SensirionI2CTxFrame::addFloat(float data)
-{
-    union
+    uint16_t SensirionI2CTxFrame::addInt32(int32_t data) { return addUInt32(static_cast<uint32_t>(data)); }
+    uint16_t SensirionI2CTxFrame::addUInt16(uint16_t data)
     {
-        uint32_t uInt32Data;
-        float    floatData;
-    } convert;
-
-    convert.floatData = data;
-    return addUInt32(convert.uInt32Data);
-}
-
-uint16_t SensirionI2CTxFrame::addBytes(const uint8_t data[], size_t dataLength)
-{
-    uint16_t error = 0;
-    for (size_t i = 0; i < dataLength; i++)
-    {
-        error |= _addByte(data[i]);
+        uint16_t error = _addByte(static_cast<uint8_t>((data & 0xFF00) >> 8));
+        error |= _addByte(static_cast<uint8_t>((data & 0x00FF) >> 0));
+        return error;
     }
-    return error;
-}
 
-uint16_t SensirionI2CTxFrame::_addByte(uint8_t data)
-{
-    if (_bufferSize <= _index)
+    uint16_t SensirionI2CTxFrame::addInt16(int16_t data) { return addUInt16(static_cast<uint16_t>(data)); }
+    uint16_t SensirionI2CTxFrame::addUInt8(uint8_t data) { return _addByte(data); }
+    uint16_t SensirionI2CTxFrame::addInt8(int8_t data) { return _addByte(static_cast<uint8_t>(data)); }
+    uint16_t SensirionI2CTxFrame::addBool(bool data) { return _addByte(static_cast<uint8_t>(data)); }
+
+    uint16_t SensirionI2CTxFrame::addFloat(float data)
     {
-        return TxFrameError | BufferSizeError;
+        union
+        {
+            uint32_t uInt32Data;
+            float    floatData;
+        } convert;
+
+        convert.floatData = data;
+        return addUInt32(convert.uInt32Data);
     }
-    _buffer[_index++] = data;
-    if ((_index - _numCommandBytes) % 3 == 2)
+
+    uint16_t SensirionI2CTxFrame::addBytes(const uint8_t data[], size_t dataLength)
+    {
+        uint16_t error = 0;
+        for (size_t i = 0; i < dataLength; i++)
+        {
+            error |= _addByte(data[i]);
+        }
+        return error;
+    }
+
+    uint16_t SensirionI2CTxFrame::_addByte(uint8_t data)
     {
         if (_bufferSize <= _index)
         {
             return TxFrameError | BufferSizeError;
         }
-        uint8_t crc       = generateCRC(&_buffer[_index - 2], 2, _polynomial_type);
-        _buffer[_index++] = crc;
-    }
-    return NoError;
-}
-
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-// SensirionRxFrame
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-
-SensirionRxFrame::SensirionRxFrame(uint8_t buffer[], size_t bufferSize)
-    : _buffer(buffer)
-    , _bufferSize(bufferSize)
-    , _index(0)
-    , _numBytes(0)
-{
-}
-
-uint16_t SensirionRxFrame::getUInt32(uint32_t &data)
-{
-    if (_numBytes < 4)
-    {
-        return RxFrameError | NoDataError;
-    }
-    data = static_cast<uint32_t>(_buffer[_index++]) << 24;
-    data |= static_cast<uint32_t>(_buffer[_index++]) << 16;
-    data |= static_cast<uint32_t>(_buffer[_index++]) << 8;
-    data |= static_cast<uint32_t>(_buffer[_index++]);
-    _numBytes -= 4;
-    return NoError;
-}
-
-uint16_t SensirionRxFrame::getInt32(int32_t &data)
-{
-    uint32_t ret   = 0;
-    uint16_t error = getUInt32(ret);
-    data           = static_cast<int32_t>(ret);
-    return error;
-}
-
-uint16_t SensirionRxFrame::getUInt16(uint16_t &data)
-{
-    if (_numBytes < 2)
-    {
-        return RxFrameError | NoDataError;
-    }
-    data = static_cast<uint16_t>(_buffer[_index++]) << 8;
-    data |= static_cast<uint16_t>(_buffer[_index++]);
-    _numBytes -= 2;
-    return NoError;
-}
-
-uint16_t SensirionRxFrame::getInt16(int16_t &data)
-{
-    uint16_t ret   = 0;
-    uint16_t error = getUInt16(ret);
-    data           = static_cast<int16_t>(ret);
-    return error;
-}
-
-uint16_t SensirionRxFrame::getUInt8(uint8_t &data)
-{
-    if (_numBytes < 1)
-    {
-        return RxFrameError | NoDataError;
-    }
-    data = _buffer[_index++];
-    _numBytes -= 1;
-    return NoError;
-}
-
-uint16_t SensirionRxFrame::getInt8(int8_t &data)
-{
-    if (_numBytes < 1)
-    {
-        return RxFrameError | NoDataError;
-    }
-    data = static_cast<int8_t>(_buffer[_index++]);
-    _numBytes -= 1;
-    return NoError;
-}
-
-uint16_t SensirionRxFrame::getBool(bool &data)
-{
-    if (_numBytes < 1)
-    {
-        return RxFrameError | NoDataError;
-    }
-    data = static_cast<bool>(_buffer[_index++]);
-    _numBytes -= 1;
-    return NoError;
-}
-
-uint16_t SensirionRxFrame::getFloat(float &data)
-{
-    union
-    {
-        uint32_t uInt32Data;
-        float    floatData;
-    } convert      = {0};
-    uint16_t error = getUInt32(convert.uInt32Data);
-    data           = convert.floatData;
-    return error;
-}
-
-uint16_t SensirionRxFrame::getBytes(uint8_t data[], size_t maxBytes)
-{
-    if (_numBytes < 1)
-    {
-        return RxFrameError | NoDataError;
-    }
-    size_t readAmount = maxBytes;
-    if (_numBytes < maxBytes)
-    {
-        readAmount = _numBytes;
-    }
-    for (size_t i = 0; i < readAmount; i++)
-    {
-        data[i] = _buffer[_index++];
-    }
-    _numBytes -= readAmount;
-    return NoError;
-}
-
-uint16_t SensirionRxFrame::getInteger(uint8_t *destination, IntegerType type, uint8_t nrOfBytes)
-{
-    if (_numBytes < nrOfBytes)
-    {
-        return RxFrameError | NoDataError;
-    }
-
-    if (nrOfBytes > type)
-    {
-        return RxFrameError;
-    }
-
-    // pad missing bytes
-    uint8_t offset = type - nrOfBytes;
-    for (uint8_t i = 0; i < offset; i++)
-    {
-        destination[type - i - 1] = 0;
-    }
-
-    for (uint8_t i = 1; i <= nrOfBytes; i++)
-    {
-        destination[type - offset - i] = _buffer[_index++];
-    }
-
-    return 0;
-}
-
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-// Crc
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-
-uint8_t generateCRCGeneric(const uint8_t *data, size_t count, uint8_t init, uint8_t polynomial)
-{
-    uint8_t crc = init;
-
-    /* calculates 8-Bit checksum with given polynomial */
-    for (size_t current_byte = 0; current_byte < count; ++current_byte)
-    {
-        crc ^= (data[current_byte]);
-        for (uint8_t crc_bit = 8; crc_bit > 0; --crc_bit)
+        _buffer[_index++] = data;
+        if ((_index - _numCommandBytes) % 3 == 2)
         {
-            if (crc & 0x80)
-                crc = (crc << 1) ^ polynomial;
-            else
-                crc = (crc << 1);
+            if (_bufferSize <= _index)
+            {
+                return TxFrameError | BufferSizeError;
+            }
+            uint8_t crc       = generateCRC(&_buffer[_index - 2], 2, _polynomial_type);
+            _buffer[_index++] = crc;
         }
+        return NoError;
     }
-    return crc;
-}
 
-uint8_t generateCRC31_ff(const uint8_t *data, size_t count) { return generateCRCGeneric(data, count, 0xff, 0x31); }
-uint8_t generateCRC31_00(const uint8_t *data, size_t count) { return generateCRCGeneric(data, count, 0x00, 0x31); }
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+    // SensirionRxFrame
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
 
-uint8_t generateCRC(const uint8_t *data, size_t count, CrcPolynomial type)
-{
-    if (CRC31_00 == type)
+    SensirionRxFrame::SensirionRxFrame(uint8_t buffer[], size_t bufferSize)
+        : _buffer(buffer)
+        , _bufferSize(bufferSize)
+        , _index(0)
+        , _numBytes(0)
     {
-        return generateCRC31_00(data, count);
     }
-    return generateCRC31_ff(data, count);
-}
 
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
-// SensirionI2cScd4x
-// ---------------------------------------------------------------------------------------------------------
-// ---------------------------------------------------------------------------------------------------------
+    uint16_t SensirionRxFrame::getUInt32(uint32_t &data)
+    {
+        if (_numBytes < 4)
+        {
+            return RxFrameError | NoDataError;
+        }
+        data = static_cast<uint32_t>(_buffer[_index++]) << 24;
+        data |= static_cast<uint32_t>(_buffer[_index++]) << 16;
+        data |= static_cast<uint32_t>(_buffer[_index++]) << 8;
+        data |= static_cast<uint32_t>(_buffer[_index++]);
+        _numBytes -= 4;
+        return NoError;
+    }
 
-class SensirionI2cScd4x
-{
-public:
-    SensirionI2cScd4x();
+    uint16_t SensirionRxFrame::getInt32(int32_t &data)
+    {
+        uint32_t ret   = 0;
+        uint16_t error = getUInt32(ret);
+        data           = static_cast<int32_t>(ret);
+        return error;
+    }
 
-    /**
-     * @brief Initializes the SCD4x class.
-     *
-     * @param i2cBus Arduino stream object to be used for communication.
-     */
-    void begin(TwoWire &i2cBus, uint8_t i2cAddress);
+    uint16_t SensirionRxFrame::getUInt16(uint16_t &data)
+    {
+        if (_numBytes < 2)
+        {
+            return RxFrameError | NoDataError;
+        }
+        data = static_cast<uint16_t>(_buffer[_index++]) << 8;
+        data |= static_cast<uint16_t>(_buffer[_index++]);
+        _numBytes -= 2;
+        return NoError;
+    }
 
-    /**
-     * @brief Read CO₂, temperature, and humidity measurements in physical
-     * units.
-     *
-     * Reads the sensor output. The measurement data can only be read out once
-     * per signal update interval as the buffer is emptied upon read-out. If no
-     * data is available in the buffer, the sensor returns a NACK. To avoid a
-     * NACK response, the get_data_ready_status can be issued to check data
-     * status. The I2C master can abort the read transfer with a NACK followed
-     * by a STOP condition after any data byte if the user is not interested in
-     * subsequent data.
-     *
-     * @param[out] aCo2Concentration CO₂ concentration in ppm
-     * @param[out] aTemperature Temperature in °C
-     * @param[out] aRelativeHumidity Relative humidity in %RH
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t readMeasurement(uint16_t &aCo2Concentration, float &aTemperature, float &aRelativeHumidity);
+    uint16_t SensirionRxFrame::getInt16(int16_t &data)
+    {
+        uint16_t ret   = 0;
+        uint16_t error = getUInt16(ret);
+        data           = static_cast<int16_t>(ret);
+        return error;
+    }
 
-    /**
-     * @brief Set the temperature compensation offset.
-     *
-     * Setting the temperature offset of the SCD4x inside the customer device
-     * allows the user to optimize the RH and T output signal. The temperature
-     * offset can depend on several factors such as the SCD4x measurement mode,
-     * self-heating of close components, the ambient temperature and air flow.
-     * Thus, the SCD4x temperature offset should be determined after integration
-     * into the final device and under its typical operating conditions
-     * (including the operation mode to be used in the application) in thermal
-     * equilibrium. By default, the temperature offset is set to 4 °C. To save
-     * the setting to the EEPROM, the persist_settings command may be issued.
-     * Equation (1) details how the characteristic temperature offset can be
-     * calculated using the current temperature output of the sensor (TSCD4x), a
-     * reference temperature value (TReference), and the previous temperature
-     * offset (Toffset_pervious) obtained using the get_temperature_offset_raw
-     * command:
-     *
-     * Toffset_actual = TSCD4x - TReference + Toffset_pervious.
-     *
-     * Recommended temperature offset values are between 0 °C and 20 °C. The
-     * temperature offset does not impact the accuracy of the CO2 output.
-     *
-     * @param[in] temperatureOffset Temperature offset value in °C
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t setTemperatureOffset(float temperatureOffset);
+    uint16_t SensirionRxFrame::getUInt8(uint8_t &data)
+    {
+        if (_numBytes < 1)
+        {
+            return RxFrameError | NoDataError;
+        }
+        data = _buffer[_index++];
+        _numBytes -= 1;
+        return NoError;
+    }
 
-    /**
-     * @brief Get the temperature compensation offset used by the sensor in °C.
-     *
-     * @param[out] aTemperatureOffset Temperature in °C
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getTemperatureOffset(float &aTemperatureOffset);
+    uint16_t SensirionRxFrame::getInt8(int8_t &data)
+    {
+        if (_numBytes < 1)
+        {
+            return RxFrameError | NoDataError;
+        }
+        data = static_cast<int8_t>(_buffer[_index++]);
+        _numBytes -= 1;
+        return NoError;
+    }
 
-    /**
-     * @brief Set the ambient pressure around the sensor.
-     *
-     * The set_ambient_pressure command can be sent during periodic measurements
-     * to enable continuous pressure compensation. Note that setting an ambient
-     * pressure overrides any pressure compensation based on a previously set
-     * sensor altitude. Use of this command is highly recommended for
-     * applications experiencing significant ambient pressure changes to ensure
-     * sensor accuracy. Valid input values are between 70000 - 120000 Pa. The
-     * default value is 101300 Pa.
-     *
-     * @param[in] ambientPressure Ambient pressure around the sensor in Pa
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t setAmbientPressure(uint32_t ambientPressure);
+    uint16_t SensirionRxFrame::getBool(bool &data)
+    {
+        if (_numBytes < 1)
+        {
+            return RxFrameError | NoDataError;
+        }
+        data = static_cast<bool>(_buffer[_index++]);
+        _numBytes -= 1;
+        return NoError;
+    }
 
-    /**
-     * @brief Get the ambient pressure around the sensor.
-     *
-     * @param[out] aAmbientPressure Pressure in Pa
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getAmbientPressure(uint32_t &aAmbientPressure);
+    uint16_t SensirionRxFrame::getFloat(float &data)
+    {
+        union
+        {
+            uint32_t uInt32Data;
+            float    floatData;
+        } convert      = {0};
+        uint16_t error = getUInt32(convert.uInt32Data);
+        data           = convert.floatData;
+        return error;
+    }
 
-    /**
-     * @brief Read if data is ready.
-     *
-     * Polls the sensor for whether data from a periodic or single shot
-     * measurement is ready to be read out.
-     *
-     * @param[out] arg0
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getDataReadyStatus(bool &arg0);
+    uint16_t SensirionRxFrame::getBytes(uint8_t data[], size_t maxBytes)
+    {
+        if (_numBytes < 1)
+        {
+            return RxFrameError | NoDataError;
+        }
+        size_t readAmount = maxBytes;
+        if (_numBytes < maxBytes)
+        {
+            readAmount = _numBytes;
+        }
+        for (size_t i = 0; i < readAmount; i++)
+        {
+            data[i] = _buffer[_index++];
+        }
+        _numBytes -= readAmount;
+        return NoError;
+    }
 
-    /**
-     * @brief Reads out the SCD4x sensor variant.
-     *
-     * @param[out] aSensorVariant
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getSensorVariant(SCD4xSensorVariant &aSensorVariant);
+    uint16_t SensirionRxFrame::getInteger(uint8_t *destination, IntegerType type, uint8_t nrOfBytes)
+    {
+        if (_numBytes < nrOfBytes)
+        {
+            return RxFrameError | NoDataError;
+        }
 
-    /**
-     * @brief Start a single shot measurement and read out the data when ready
-     *
-     * @param[out] aCo2Concentration CO₂ concentration in ppm
-     * @param[out] aTemperature Temperature in °C
-     * @param[out] aRelativeHumidity Relative humidity in %RH
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t measureAndReadSingleShot(uint16_t &aCo2Concentration, float &aTemperature, float &aRelativeHumidity);
+        if (nrOfBytes > type)
+        {
+            return RxFrameError;
+        }
 
-    /**
-     * @brief Start periodic measurement mode.
-     *
-     * Starts the periodic measurement mode. The signal update interval is 5
-     * seconds.
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t startPeriodicMeasurement();
+        // pad missing bytes
+        uint8_t offset = type - nrOfBytes;
+        for (uint8_t i = 0; i < offset; i++)
+        {
+            destination[type - i - 1] = 0;
+        }
 
-    /**
-     * @brief Read CO₂, temperature, and humidity measurements raw values.
-     *
-     * Reads the sensor output. The measurement data can only be read out once
-     * per signal update interval as the buffer is emptied upon read-out. If no
-     * data is available in the buffer, the sensor returns a NACK. To avoid a
-     * NACK response, the get_data_ready_status can be issued to check data
-     * status. The I2C master can abort the read transfer with a NACK followed
-     * by a STOP condition after any data byte if the user is not interested in
-     * subsequent data.
-     *
-     * @param[out] co2Concentration CO₂ concentration in ppm
-     * @param[out] temperature Convert to degrees celsius by (175 * value /
-     * 65535) - 45
-     * @param[out] relativeHumidity Convert to relative humidity in % by (100 *
-     * value / 65535)
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t readMeasurementRaw(uint16_t &co2Concentration, uint16_t &temperature, uint16_t &relativeHumidity);
+        for (uint8_t i = 1; i <= nrOfBytes; i++)
+        {
+            destination[type - offset - i] = _buffer[_index++];
+        }
 
-    /**
-     * @brief Stop periodic measurement to change the sensor configuration or to
-     * save power.
-     *
-     * Command returns a sensor running in periodic measurement mode or low
-     * power periodic measurement mode back to the idle state, e.g. to then
-     * allow changing the sensor configuration or to save power.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t stopPeriodicMeasurement();
+        return 0;
+    }
 
-    /**
-     * @brief Set the temperature compensation offset (raw value).
-     *
-     * Setting the temperature offset of the SCD4x inside the customer device
-     * allows the user to optimize the RH and T output signal. The temperature
-     * offset can depend on several factors such as the SCD4x measurement mode,
-     * self-heating of close components, the ambient temperature and air flow.
-     * Thus, the SCD4x temperature offset should be determined after integration
-     * into the final device and under its typical operating conditions
-     * (including the operation mode to be used in the application) in thermal
-     * equilibrium. By default, the temperature offset is set to 4 °C. To save
-     * the setting to the EEPROM, the persist_settings command may be issued.
-     * Equation (1) details how the characteristic temperature offset can be
-     * calculated using the current temperature output of the sensor (TSCD4x), a
-     * reference temperature value (TReference), and the previous temperature
-     * offset (Toffset_pervious) obtained using the get_temperature_offset_raw
-     * command:
-     *
-     * Toffset_actual = TSCD4x - TReference + Toffset_pervious.
-     *
-     * Recommended temperature offset values are between 0 °C and 20 °C. The
-     * temperature offset does not impact the accuracy of the CO2 output.
-     *
-     * @param[in] offsetTemperature Temperature offset. Convert Toffset in °C to
-     * value by: (Toffset * 65535 / 175)
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     *
-     * Example:
-     * --------
-     *
-     * @code{.cpp}
-     *
-     *     int16_t localError = 0;
-     *     localError = sensor.setTemperatureOffsetRaw(1498);
-     *     if (localError != NO_ERROR) {
-     *         return;
-     *     }
-     *
-     * @endcode
-     *
-     */
-    int16_t setTemperatureOffsetRaw(uint16_t offsetTemperature);
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+    // Crc
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
 
-    /**
-     * @brief Get the raw temperature compensation offset used by the sensor.
-     *
-     * @param[out] offsetTemperature Convert to °C by (175 * value / 65535)
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getTemperatureOffsetRaw(uint16_t &offsetTemperature);
+    uint8_t generateCRCGeneric(const uint8_t *data, size_t count, uint8_t init, uint8_t polynomial)
+    {
+        uint8_t crc = init;
 
-    /**
-     * @brief Set the altitude of the sensor (in meters above sea level).
-     *
-     * Typically, the sensor altitude is set once after device installation. To
-     * save the setting to the EEPROM, the persist_settings command must be
-     * issued. The default sensor altitude value is set to 0 meters above sea
-     * level. Note that setting a sensor altitude to the sensor overrides any
-     * pressure compensation based on a previously set ambient pressure.
-     *
-     * @param[in] sensorAltitude Sensor altitude in meters above sea level.
-     * Valid input values are between 0 - 3000 m.
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     *
-     * Example:
-     * --------
-     *
-     * @code{.cpp}
-     *
-     *     int16_t localError = 0;
-     *     localError = sensor.setSensorAltitude(0);
-     *     if (localError != NO_ERROR) {
-     *         return;
-     *     }
-     *
-     * @endcode
-     *
-     */
-    int16_t setSensorAltitude(uint16_t sensorAltitude);
+        /* calculates 8-Bit checksum with given polynomial */
+        for (size_t current_byte = 0; current_byte < count; ++current_byte)
+        {
+            crc ^= (data[current_byte]);
+            for (uint8_t crc_bit = 8; crc_bit > 0; --crc_bit)
+            {
+                if (crc & 0x80)
+                    crc = (crc << 1) ^ polynomial;
+                else
+                    crc = (crc << 1);
+            }
+        }
+        return crc;
+    }
 
-    /**
-     * @brief Get the sensor altitude used by the sensor.
-     *
-     * @param[out] sensorAltitude Sensor altitude used by the sensor in meters
-     * above sea level.
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getSensorAltitude(uint16_t &sensorAltitude);
+    uint8_t generateCRC31_ff(const uint8_t *data, size_t count) { return generateCRCGeneric(data, count, 0xff, 0x31); }
+    uint8_t generateCRC31_00(const uint8_t *data, size_t count) { return generateCRCGeneric(data, count, 0x00, 0x31); }
 
-    /**
-     * @brief Set the raw ambient pressure value.
-     *
-     * The set_ambient_pressure command can be sent during periodic measurements
-     * to enable continuous pressure compensation. Note that setting an ambient
-     * pressure overrides any pressure compensation based on a previously set
-     * sensor altitude. Use of this command is highly recommended for
-     * applications experiencing significant ambient pressure changes to ensure
-     * sensor accuracy. Valid input values are between 70000 - 120000 Pa. The
-     * default value is 101300 Pa.
-     *
-     * @param[in] ambientPressure Convert ambient_pressure in hPa to Pa by
-     * ambient_pressure / 100.
-     *
-     * @note Available during measurements.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     *
-     * Example:
-     * --------
-     *
-     * @code{.cpp}
-     *
-     *     int16_t localError = 0;
-     *     localError = sensor.setAmbientPressureRaw(1013);
-     *     if (localError != NO_ERROR) {
-     *         return;
-     *     }
-     *
-     * @endcode
-     *
-     */
-    int16_t setAmbientPressureRaw(uint16_t ambientPressure);
+    uint8_t generateCRC(const uint8_t *data, size_t count, CrcPolynomial type)
+    {
+        if (CRC31_00 == type)
+        {
+            return generateCRC31_00(data, count);
+        }
+        return generateCRC31_ff(data, count);
+    }
 
-    /**
-     * @brief Get the ambient pressure around the sensor.
-     *
-     * @param[out] ambientPressure Convert to Pa by value = ambient_pressure *
-     * 100.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getAmbientPressureRaw(uint16_t &ambientPressure);
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
+    // SensirionI2cScd4x
+    // ---------------------------------------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------------------------------------
 
-    /**
-     * @brief Perform a forced recalibration (FRC) of the CO₂ concentration.
-     *
-     * To successfully conduct an accurate FRC, the following steps need to be
-     * carried out:
-     *
-     * 1. Operate the SCD4x in the operation mode later used for normal sensor
-     * operation (e.g. periodic measurement) for at least 3 minutes in an
-     * environment with a homogenous and constant CO2 concentration. The sensor
-     * must be operated at the voltage desired for the application when
-     * performing the FRC sequence. 2. Issue the stop_periodic_measurement
-     * command. 3. Issue the perform_forced_recalibration command.
-     *
-     * A return value of 0xffff indicates that the FRC has failed because the
-     * sensor was not operated before sending the command.
-     *
-     * @param[in] targetCO2Concentration Target CO₂ concentration in ppm CO₂.
-     * @param[out] frcCorrection Convert to FRC correction in ppm CO₂ by
-     * frc_correction - 0x8000. A return value of 0xFFFF indicates that the FRC
-     * has failed because the sensor was not operated before sending the
-     * command.
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t performForcedRecalibration(uint16_t targetCO2Concentration, uint16_t &frcCorrection);
+    class SensirionI2cScd4x
+    {
+    public:
+        SensirionI2cScd4x();
 
-    /**
-     * @brief Enable or disable automatic self calibration (ASC).
-     *
-     * Sets the current state (enabled / disabled) of the ASC. By default, ASC
-     * is enabled. To save the setting to the EEPROM, the persist_settings
-     * command must be issued. The ASC enables excellent long-term stability of
-     * SCD4x without the need for regular user intervention. The algorithm
-     * leverages the sensor's measurement history and the assumption of exposure
-     * of the sensor to a known minimum background CO₂ concentration at least
-     * once over a period of cumulative operation. By default, the ASC algorithm
-     * assumes that the sensor is exposed to outdoor fresh air at 400 ppm CO₂
-     * concentration at least once per week of accumulated operation using one
-     * of the following measurement modes for at least 4 hours without
-     * interruption at a time: periodic measurement mode, low power periodic
-     * measurement mode or single shot mode with a measurement interval of 5
-     * minutes (SCD41 only).
-     *
-     * @param[in] ascEnabled 1 enables ASC, 0 disables ASC.
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     *
-     * Example:
-     * --------
-     *
-     * @code{.cpp}
-     *
-     *     int16_t localError = 0;
-     *     localError = sensor.setAutomaticSelfCalibrationEnabled(1);
-     *     if (localError != NO_ERROR) {
-     *         return;
-     *     }
-     *
-     * @endcode
-     *
-     */
-    int16_t setAutomaticSelfCalibrationEnabled(uint16_t ascEnabled);
+        /**
+         * @brief Initializes the SCD4x class.
+         *
+         * @param i2cBus Arduino stream object to be used for communication.
+         */
+        void begin(TwoWire &i2cBus, uint8_t i2cAddress);
 
-    /**
-     * @brief Check if automatic self calibration (ASC) is enabled.
-     *
-     * @param[out] ascEnabled 1 if ASC is enabled, 0 if ASC is disabled.
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getAutomaticSelfCalibrationEnabled(uint16_t &ascEnabled);
+        /**
+         * @brief Read CO₂, temperature, and humidity measurements in physical
+         * units.
+         *
+         * Reads the sensor output. The measurement data can only be read out once
+         * per signal update interval as the buffer is emptied upon read-out. If no
+         * data is available in the buffer, the sensor returns a NACK. To avoid a
+         * NACK response, the get_data_ready_status can be issued to check data
+         * status. The I2C master can abort the read transfer with a NACK followed
+         * by a STOP condition after any data byte if the user is not interested in
+         * subsequent data.
+         *
+         * @param[out] aCo2Concentration CO₂ concentration in ppm
+         * @param[out] aTemperature Temperature in °C
+         * @param[out] aRelativeHumidity Relative humidity in %RH
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t readMeasurement(uint16_t &aCo2Concentration, float &aTemperature, float &aRelativeHumidity);
 
-    /**
-     * @brief Set the value of ASC baseline target in ppm.
-     *
-     * Sets the value of the ASC baseline target, i.e. the CO₂ concentration in
-     * ppm which the ASC algorithm will assume as lower-bound background to
-     * which the SCD4x is exposed to regularly within one ASC period of
-     * operation. To save the setting to the EEPROM, the persist_settings
-     * command must be issued subsequently. The factory default value is 400
-     * ppm.
-     *
-     * @param[in] ascTarget ASC baseline value in ppm CO₂
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     *
-     * Example:
-     * --------
-     *
-     * @code{.cpp}
-     *
-     *     int16_t localError = 0;
-     *     localError = sensor.setAutomaticSelfCalibrationTarget(400);
-     *     if (localError != NO_ERROR) {
-     *         return;
-     *     }
-     *
-     * @endcode
-     *
-     */
-    int16_t setAutomaticSelfCalibrationTarget(uint16_t ascTarget);
+        /**
+         * @brief Set the temperature compensation offset.
+         *
+         * Setting the temperature offset of the SCD4x inside the customer device
+         * allows the user to optimize the RH and T output signal. The temperature
+         * offset can depend on several factors such as the SCD4x measurement mode,
+         * self-heating of close components, the ambient temperature and air flow.
+         * Thus, the SCD4x temperature offset should be determined after integration
+         * into the final device and under its typical operating conditions
+         * (including the operation mode to be used in the application) in thermal
+         * equilibrium. By default, the temperature offset is set to 4 °C. To save
+         * the setting to the EEPROM, the persist_settings command may be issued.
+         * Equation (1) details how the characteristic temperature offset can be
+         * calculated using the current temperature output of the sensor (TSCD4x), a
+         * reference temperature value (TReference), and the previous temperature
+         * offset (Toffset_pervious) obtained using the get_temperature_offset_raw
+         * command:
+         *
+         * Toffset_actual = TSCD4x - TReference + Toffset_pervious.
+         *
+         * Recommended temperature offset values are between 0 °C and 20 °C. The
+         * temperature offset does not impact the accuracy of the CO2 output.
+         *
+         * @param[in] temperatureOffset Temperature offset value in °C
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t setTemperatureOffset(float temperatureOffset);
 
-    /**
-     * @brief Reads out the ASC baseline target concentration parameter.
-     *
-     * @param[out] ascTarget ASC baseline target concentration parameter in ppm
-     * CO₂.
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getAutomaticSelfCalibrationTarget(uint16_t &ascTarget);
+        /**
+         * @brief Get the temperature compensation offset used by the sensor in °C.
+         *
+         * @param[out] aTemperatureOffset Temperature in °C
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getTemperatureOffset(float &aTemperatureOffset);
 
-    /**
-     * @brief Start a low-power periodic measurement (interval 30 s).
-     *
-     * To enable use-cases with a constrained power budget, the SCD4x features a
-     * low power periodic measurement mode with a signal update interval of
-     * approximately 30 seconds. The low power periodic measurement mode is
-     * initiated using the start_low_power_periodic_measurement command and
-     * read-out in a similar manner as the periodic measurement mode using the
-     * read_measurement command. To periodically check whether a new measurement
-     * result is available for read out, the get_data_ready_status command can
-     * be used to synchronize to the sensor's internal measurement interval as
-     * an alternative to relying on the ACK/NACK status of the
-     * read_measurement_command.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t startLowPowerPeriodicMeasurement();
+        /**
+         * @brief Set the ambient pressure around the sensor.
+         *
+         * The set_ambient_pressure command can be sent during periodic measurements
+         * to enable continuous pressure compensation. Note that setting an ambient
+         * pressure overrides any pressure compensation based on a previously set
+         * sensor altitude. Use of this command is highly recommended for
+         * applications experiencing significant ambient pressure changes to ensure
+         * sensor accuracy. Valid input values are between 70000 - 120000 Pa. The
+         * default value is 101300 Pa.
+         *
+         * @param[in] ambientPressure Ambient pressure around the sensor in Pa
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t setAmbientPressure(uint32_t ambientPressure);
 
-    /**
-     * @brief Read if data is ready.
-     *
-     * Polls the sensor for whether data from a periodic or single shot
-     * measurement is ready to be read out.
-     *
-     * @param[out] dataReadyStatus If one or more of the 11 least significant
-     * bits are 1, then the data is ready.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getDataReadyStatusRaw(uint16_t &dataReadyStatus);
+        /**
+         * @brief Get the ambient pressure around the sensor.
+         *
+         * @param[out] aAmbientPressure Pressure in Pa
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getAmbientPressure(uint32_t &aAmbientPressure);
 
-    /**
-     * @brief Store volatile sensor settings in the EEPROM.
-     *
-     * Configuration settings such as the temperature offset, sensor altitude
-     * and the ASC enabled/disabled parameters are by default stored in the
-     * volatile memory (RAM) only. The persist_settings command stores the
-     * current configuration in the EEPROM of the SCD4x, ensuring the current
-     * settings persist after power-cycling. To avoid unnecessary wear of the
-     * EEPROM, the persist_settings command should only be sent following
-     * configuration changes whose persistence is required. The EEPROM is
-     * guaranteed to withstand at least 2000 write cycles. Note that field
-     * calibration history (i.e. FRC and ASC) is automatically stored in a
-     * separate EEPROM dimensioned for the specified sensor lifetime when
-     * operated continuously in either periodic measurement mode, low power
-     * periodic measurement mode or single shot mode with 5 minute measurement
-     * interval (SCD41 only).
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t persistSettings();
+        /**
+         * @brief Read if data is ready.
+         *
+         * Polls the sensor for whether data from a periodic or single shot
+         * measurement is ready to be read out.
+         *
+         * @param[out] arg0
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getDataReadyStatus(bool &arg0);
 
-    /**
-     * @brief Read the sensor's unique serial number.
-     *
-     * Reading out the serial number can be used to identify the chip and to
-     * verify the presence of the sensor. The get_serial_number command returns
-     * 3 words, and every word is followed by an 8-bit CRC checksum. Together,
-     * the 3 words constitute a unique serial number with a length of 48 bits
-     * (in big endian format). This method takes care of converting the serial
-     * number from the 3 words to an 64 bit unsigned integer.
-     *
-     * @param[out] serialNumber of the sensor as integer.
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getSerialNumber(uint64_t &serialNumber);
+        /**
+         * @brief Reads out the SCD4x sensor variant.
+         *
+         * @param[out] aSensorVariant
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getSensorVariant(SCD4xSensorVariant &aSensorVariant);
 
-    /**
-     * @brief Perform self test to assess sensor functionality and power supply.
-     *
-     * Can be used as an end-of-line test to check the sensor functionality.
-     *
-     * @param[out] sensorStatus If sensor status is equal to 0, no malfunction
-     * has been detected.
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t performSelfTest(uint16_t &sensorStatus);
+        /**
+         * @brief Start a single shot measurement and read out the data when ready
+         *
+         * @param[out] aCo2Concentration CO₂ concentration in ppm
+         * @param[out] aTemperature Temperature in °C
+         * @param[out] aRelativeHumidity Relative humidity in %RH
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t measureAndReadSingleShot(uint16_t &aCo2Concentration, float &aTemperature, float &aRelativeHumidity);
 
-    /**
-     * @brief Perform factory reset to erase the settings stored in the EEPROM.
-     *
-     * The perform_factory_reset command resets all configuration settings
-     * stored in the EEPROM and erases the FRC and ASC algorithm history.
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t performFactoryReset();
+        /**
+         * @brief Start periodic measurement mode.
+         *
+         * Starts the periodic measurement mode. The signal update interval is 5
+         * seconds.
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t startPeriodicMeasurement();
 
-    /**
-     * @brief Reinitialize the sensor by reloading the settings from the EEPROM.
-     *
-     * The reinit command reinitialize the sensor by reloading user settings
-     * from EEPROM. The sensor must be in the idle state before sending the
-     * reinit command. If the reinit command does not trigger the desired
-     * re-initialization, a power-cycle should be applied to the SCD4x.
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t reinit();
+        /**
+         * @brief Read CO₂, temperature, and humidity measurements raw values.
+         *
+         * Reads the sensor output. The measurement data can only be read out once
+         * per signal update interval as the buffer is emptied upon read-out. If no
+         * data is available in the buffer, the sensor returns a NACK. To avoid a
+         * NACK response, the get_data_ready_status can be issued to check data
+         * status. The I2C master can abort the read transfer with a NACK followed
+         * by a STOP condition after any data byte if the user is not interested in
+         * subsequent data.
+         *
+         * @param[out] co2Concentration CO₂ concentration in ppm
+         * @param[out] temperature Convert to degrees celsius by (175 * value /
+         * 65535) - 45
+         * @param[out] relativeHumidity Convert to relative humidity in % by (100 *
+         * value / 65535)
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t readMeasurementRaw(uint16_t &co2Concentration, uint16_t &temperature, uint16_t &relativeHumidity);
 
-    /**
-     * @brief Reads out the SCD4x sensor variant.
-     *
-     * @param[out] sensorVariant Bits[15…12] = 0000 → SCD40 Bits[15…12] = 0001 →
-     * SCD41
-     *
-     * @note This command is only available in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getSensorVariantRaw(uint16_t &sensorVariant);
+        /**
+         * @brief Stop periodic measurement to change the sensor configuration or to
+         * save power.
+         *
+         * Command returns a sensor running in periodic measurement mode or low
+         * power periodic measurement mode back to the idle state, e.g. to then
+         * allow changing the sensor configuration or to save power.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t stopPeriodicMeasurement();
 
-    /**
-     * @brief On-demand measurement of the CO₂ concentration, temperature, and
-     * humidity.
-     *
-     * The sensor output is read out by using the read_measurement command. The
-     * fastest possible sampling interval for single shot measurements is 5
-     * seconds. The ASC is enabled by default in single shot operation and
-     * optimized for single shot measurements performed every 5 minutes. For
-     * more details about single shot measurements and optimization of power
-     * consumption please refer to the datasheet.
-     *
-     * @note This command is only available for SCD41.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t measureSingleShot();
+        /**
+         * @brief Set the temperature compensation offset (raw value).
+         *
+         * Setting the temperature offset of the SCD4x inside the customer device
+         * allows the user to optimize the RH and T output signal. The temperature
+         * offset can depend on several factors such as the SCD4x measurement mode,
+         * self-heating of close components, the ambient temperature and air flow.
+         * Thus, the SCD4x temperature offset should be determined after integration
+         * into the final device and under its typical operating conditions
+         * (including the operation mode to be used in the application) in thermal
+         * equilibrium. By default, the temperature offset is set to 4 °C. To save
+         * the setting to the EEPROM, the persist_settings command may be issued.
+         * Equation (1) details how the characteristic temperature offset can be
+         * calculated using the current temperature output of the sensor (TSCD4x), a
+         * reference temperature value (TReference), and the previous temperature
+         * offset (Toffset_pervious) obtained using the get_temperature_offset_raw
+         * command:
+         *
+         * Toffset_actual = TSCD4x - TReference + Toffset_pervious.
+         *
+         * Recommended temperature offset values are between 0 °C and 20 °C. The
+         * temperature offset does not impact the accuracy of the CO2 output.
+         *
+         * @param[in] offsetTemperature Temperature offset. Convert Toffset in °C to
+         * value by: (Toffset * 65535 / 175)
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         *
+         * Example:
+         * --------
+         *
+         * @code{.cpp}
+         *
+         *     int16_t localError = 0;
+         *     localError = sensor.setTemperatureOffsetRaw(1498);
+         *     if (localError != NO_ERROR) {
+         *         return;
+         *     }
+         *
+         * @endcode
+         *
+         */
+        int16_t setTemperatureOffsetRaw(uint16_t offsetTemperature);
 
-    /**
-     * @brief On-demand measurement of the temperature and humidity only.
-     *
-     * For more details about single shot measurements and optimization of power
-     * consumption please refer to the datasheet.
-     *
-     * @note This command is only available for SCD41.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t measureSingleShotRhtOnly();
+        /**
+         * @brief Get the raw temperature compensation offset used by the sensor.
+         *
+         * @param[out] offsetTemperature Convert to °C by (175 * value / 65535)
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getTemperatureOffsetRaw(uint16_t &offsetTemperature);
 
-    /**
-     * @brief Put the sensor into sleep mode from idle mode.
-     *
-     * Put the sensor from idle to sleep to reduce power consumption. Can be
-     * used to power down when operating the sensor in power-cycled single shot
-     * mode.
-     *
-     * @note This command is only available in idle mode. Only for SCD41.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t powerDown();
+        /**
+         * @brief Set the altitude of the sensor (in meters above sea level).
+         *
+         * Typically, the sensor altitude is set once after device installation. To
+         * save the setting to the EEPROM, the persist_settings command must be
+         * issued. The default sensor altitude value is set to 0 meters above sea
+         * level. Note that setting a sensor altitude to the sensor overrides any
+         * pressure compensation based on a previously set ambient pressure.
+         *
+         * @param[in] sensorAltitude Sensor altitude in meters above sea level.
+         * Valid input values are between 0 - 3000 m.
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         *
+         * Example:
+         * --------
+         *
+         * @code{.cpp}
+         *
+         *     int16_t localError = 0;
+         *     localError = sensor.setSensorAltitude(0);
+         *     if (localError != NO_ERROR) {
+         *         return;
+         *     }
+         *
+         * @endcode
+         *
+         */
+        int16_t setSensorAltitude(uint16_t sensorAltitude);
 
-    /**
-     * @brief Wake up sensor from sleep mode to idle mode.
-     *
-     * Wake up the sensor from sleep mode into idle mode. Note that the SCD4x
-     * does not acknowledge the wake_up command. The sensor's idle state after
-     * wake up can be verified by reading out the serial number.
-     *
-     * @note This command is only available for SCD41.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t wakeUp();
+        /**
+         * @brief Get the sensor altitude used by the sensor.
+         *
+         * @param[out] sensorAltitude Sensor altitude used by the sensor in meters
+         * above sea level.
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getSensorAltitude(uint16_t &sensorAltitude);
 
-    /**
-     * @brief Sets the initial period for ASC correction
-     *
-     * Sets the duration of the initial period for ASC correction (in hours). By
-     * default, the initial period for ASC correction is 44 hours. Allowed
-     * values are integer multiples of 4 hours. A value of 0 results in an
-     * immediate correction. To save the setting to the EEPROM, the
-     * persist_settings command must be issued.
-     *
-     * For single shot operation, this parameter always assumes a measurement
-     * interval of 5 minutes, counting the number of single shots to calculate
-     * elapsed time. If single shot measurements are taken more / less
-     * frequently than once every 5 minutes, this parameter must be scaled
-     * accordingly to achieve the intended period in hours (e.g. for a 10-minute
-     * measurement interval, the scaled parameter value is obtained by
-     * multiplying the intended period in hours by 0.5).
-     *
-     * @param[in] ascInitialPeriod ASC initial period in hours
-     *
-     * @note This command is available for SCD41 and only in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     *
-     * Example:
-     * --------
-     *
-     * @code{.cpp}
-     *
-     *     int16_t localError = 0;
-     *     localError = sensor.setAutomaticSelfCalibrationInitialPeriod(44);
-     *     if (localError != NO_ERROR) {
-     *         return;
-     *     }
-     *
-     * @endcode
-     *
-     */
-    int16_t setAutomaticSelfCalibrationInitialPeriod(uint16_t ascInitialPeriod);
+        /**
+         * @brief Set the raw ambient pressure value.
+         *
+         * The set_ambient_pressure command can be sent during periodic measurements
+         * to enable continuous pressure compensation. Note that setting an ambient
+         * pressure overrides any pressure compensation based on a previously set
+         * sensor altitude. Use of this command is highly recommended for
+         * applications experiencing significant ambient pressure changes to ensure
+         * sensor accuracy. Valid input values are between 70000 - 120000 Pa. The
+         * default value is 101300 Pa.
+         *
+         * @param[in] ambientPressure Convert ambient_pressure in hPa to Pa by
+         * ambient_pressure / 100.
+         *
+         * @note Available during measurements.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         *
+         * Example:
+         * --------
+         *
+         * @code{.cpp}
+         *
+         *     int16_t localError = 0;
+         *     localError = sensor.setAmbientPressureRaw(1013);
+         *     if (localError != NO_ERROR) {
+         *         return;
+         *     }
+         *
+         * @endcode
+         *
+         */
+        int16_t setAmbientPressureRaw(uint16_t ambientPressure);
 
-    /**
-     * @brief Read out the initial period for ASC correction
-     *
-     * @param[out] ascInitialPeriod ASC initial period in hours
-     *
-     * @note This command is only available for SCD41 and only in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getAutomaticSelfCalibrationInitialPeriod(uint16_t &ascInitialPeriod);
+        /**
+         * @brief Get the ambient pressure around the sensor.
+         *
+         * @param[out] ambientPressure Convert to Pa by value = ambient_pressure *
+         * 100.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getAmbientPressureRaw(uint16_t &ambientPressure);
 
-    /**
-     * @brief Sets the standard period for ASC correction.
-     *
-     * Sets the standard period for ASC correction (in hours). By default, the
-     * standard period for ASC correction is 156 hours. Allowed values are
-     * integer multiples of 4 hours. Note: a value of 0 results in an immediate
-     * correction. To save the setting to the EEPROM, the persist_settings (see
-     * Section 3.10.1) command must be issued.
-     *
-     * For single shot operation, this parameter always assumes a measurement
-     * interval of 5 minutes, counting the number of single shots to calculate
-     * elapsed time. If single shot measurements are taken more / less
-     * frequently than once every 5 minutes, this parameter must be scaled
-     * accordingly to achieve the intended period in hours (e.g. for a 10-minute
-     * measurement interval, the scaled parameter value is obtained by
-     * multiplying the intended period in hours by 0.5).
-     *
-     * @param[in] ascStandardPeriod ASC standard period in hours
-     *
-     * @note This command is only available for SCD41 and only in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     *
-     * Example:
-     * --------
-     *
-     * @code{.cpp}
-     *
-     *     int16_t localError = 0;
-     *     localError = sensor.setAutomaticSelfCalibrationStandardPeriod(156);
-     *     if (localError != NO_ERROR) {
-     *         return;
-     *     }
-     *
-     * @endcode
-     *
-     */
-    int16_t setAutomaticSelfCalibrationStandardPeriod(uint16_t ascStandardPeriod);
+        /**
+         * @brief Perform a forced recalibration (FRC) of the CO₂ concentration.
+         *
+         * To successfully conduct an accurate FRC, the following steps need to be
+         * carried out:
+         *
+         * 1. Operate the SCD4x in the operation mode later used for normal sensor
+         * operation (e.g. periodic measurement) for at least 3 minutes in an
+         * environment with a homogenous and constant CO2 concentration. The sensor
+         * must be operated at the voltage desired for the application when
+         * performing the FRC sequence. 2. Issue the stop_periodic_measurement
+         * command. 3. Issue the perform_forced_recalibration command.
+         *
+         * A return value of 0xffff indicates that the FRC has failed because the
+         * sensor was not operated before sending the command.
+         *
+         * @param[in] targetCO2Concentration Target CO₂ concentration in ppm CO₂.
+         * @param[out] frcCorrection Convert to FRC correction in ppm CO₂ by
+         * frc_correction - 0x8000. A return value of 0xFFFF indicates that the FRC
+         * has failed because the sensor was not operated before sending the
+         * command.
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t performForcedRecalibration(uint16_t targetCO2Concentration, uint16_t &frcCorrection);
 
-    /**
-     * @brief Get the standard period for ASC correction.
-     *
-     * @param[out] ascStandardPeriod ASC standard period in hours
-     *
-     * @note This command is only available for SCD41 and only in idle mode.
-     *
-     * @return error_code 0 on success, an error code otherwise.
-     */
-    int16_t getAutomaticSelfCalibrationStandardPeriod(uint16_t &ascStandardPeriod);
+        /**
+         * @brief Enable or disable automatic self calibration (ASC).
+         *
+         * Sets the current state (enabled / disabled) of the ASC. By default, ASC
+         * is enabled. To save the setting to the EEPROM, the persist_settings
+         * command must be issued. The ASC enables excellent long-term stability of
+         * SCD4x without the need for regular user intervention. The algorithm
+         * leverages the sensor's measurement history and the assumption of exposure
+         * of the sensor to a known minimum background CO₂ concentration at least
+         * once over a period of cumulative operation. By default, the ASC algorithm
+         * assumes that the sensor is exposed to outdoor fresh air at 400 ppm CO₂
+         * concentration at least once per week of accumulated operation using one
+         * of the following measurement modes for at least 4 hours without
+         * interruption at a time: periodic measurement mode, low power periodic
+         * measurement mode or single shot mode with a measurement interval of 5
+         * minutes (SCD41 only).
+         *
+         * @param[in] ascEnabled 1 enables ASC, 0 disables ASC.
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         *
+         * Example:
+         * --------
+         *
+         * @code{.cpp}
+         *
+         *     int16_t localError = 0;
+         *     localError = sensor.setAutomaticSelfCalibrationEnabled(1);
+         *     if (localError != NO_ERROR) {
+         *         return;
+         *     }
+         *
+         * @endcode
+         *
+         */
+        int16_t setAutomaticSelfCalibrationEnabled(uint16_t ascEnabled);
 
-    /**
-     * @brief signalTemperature
-     *
-     * @param[in] rawTemperature
-     *
-     * @return Temperature in °C
-     */
-    static float signalTemperature(uint16_t rawTemperature);
+        /**
+         * @brief Check if automatic self calibration (ASC) is enabled.
+         *
+         * @param[out] ascEnabled 1 if ASC is enabled, 0 if ASC is disabled.
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getAutomaticSelfCalibrationEnabled(uint16_t &ascEnabled);
 
-    /**
-     * @brief signalRelativeHumidity
-     *
-     * @param[in] rawRelativeHumidity
-     *
-     * @return Relative humidity in %RH
-     */
-    static float signalRelativeHumidity(uint16_t rawRelativeHumidity);
+        /**
+         * @brief Set the value of ASC baseline target in ppm.
+         *
+         * Sets the value of the ASC baseline target, i.e. the CO₂ concentration in
+         * ppm which the ASC algorithm will assume as lower-bound background to
+         * which the SCD4x is exposed to regularly within one ASC period of
+         * operation. To save the setting to the EEPROM, the persist_settings
+         * command must be issued subsequently. The factory default value is 400
+         * ppm.
+         *
+         * @param[in] ascTarget ASC baseline value in ppm CO₂
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         *
+         * Example:
+         * --------
+         *
+         * @code{.cpp}
+         *
+         *     int16_t localError = 0;
+         *     localError = sensor.setAutomaticSelfCalibrationTarget(400);
+         *     if (localError != NO_ERROR) {
+         *         return;
+         *     }
+         *
+         * @endcode
+         *
+         */
+        int16_t setAutomaticSelfCalibrationTarget(uint16_t ascTarget);
 
-    /**
-     * @brief signalCo2Concentration
-     *
-     * @param[in] rawCo2Concentration
-     *
-     * @return CO₂ concentration in ppm
-     */
-    static uint16_t signalCo2Concentration(uint16_t rawCo2Concentration);
+        /**
+         * @brief Reads out the ASC baseline target concentration parameter.
+         *
+         * @param[out] ascTarget ASC baseline target concentration parameter in ppm
+         * CO₂.
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getAutomaticSelfCalibrationTarget(uint16_t &ascTarget);
 
-    /**
-     * @brief signalTemperatureOffset
-     *
-     * @param[in] rawTemperatureOffset
-     *
-     * @return Temperature in °C
-     */
-    static float signalTemperatureOffset(uint16_t rawTemperatureOffset);
+        /**
+         * @brief Start a low-power periodic measurement (interval 30 s).
+         *
+         * To enable use-cases with a constrained power budget, the SCD4x features a
+         * low power periodic measurement mode with a signal update interval of
+         * approximately 30 seconds. The low power periodic measurement mode is
+         * initiated using the start_low_power_periodic_measurement command and
+         * read-out in a similar manner as the periodic measurement mode using the
+         * read_measurement command. To periodically check whether a new measurement
+         * result is available for read out, the get_data_ready_status command can
+         * be used to synchronize to the sensor's internal measurement interval as
+         * an alternative to relying on the ACK/NACK status of the
+         * read_measurement_command.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t startLowPowerPeriodicMeasurement();
 
-    /**
-     * @brief signalAmbientPressure
-     *
-     * @param[in] rawAmbientPressure
-     *
-     * @return Pressure in Pa
-     */
-    static uint32_t signalAmbientPressure(uint16_t rawAmbientPressure);
+        /**
+         * @brief Read if data is ready.
+         *
+         * Polls the sensor for whether data from a periodic or single shot
+         * measurement is ready to be read out.
+         *
+         * @param[out] dataReadyStatus If one or more of the 11 least significant
+         * bits are 1, then the data is ready.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getDataReadyStatusRaw(uint16_t &dataReadyStatus);
 
-private:
-    TwoWire *_i2cBus     = nullptr;
-    uint8_t  _i2cAddress = 0;
-};
+        /**
+         * @brief Store volatile sensor settings in the EEPROM.
+         *
+         * Configuration settings such as the temperature offset, sensor altitude
+         * and the ASC enabled/disabled parameters are by default stored in the
+         * volatile memory (RAM) only. The persist_settings command stores the
+         * current configuration in the EEPROM of the SCD4x, ensuring the current
+         * settings persist after power-cycling. To avoid unnecessary wear of the
+         * EEPROM, the persist_settings command should only be sent following
+         * configuration changes whose persistence is required. The EEPROM is
+         * guaranteed to withstand at least 2000 write cycles. Note that field
+         * calibration history (i.e. FRC and ASC) is automatically stored in a
+         * separate EEPROM dimensioned for the specified sensor lifetime when
+         * operated continuously in either periodic measurement mode, low power
+         * periodic measurement mode or single shot mode with 5 minute measurement
+         * interval (SCD41 only).
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t persistSettings();
+
+        /**
+         * @brief Read the sensor's unique serial number.
+         *
+         * Reading out the serial number can be used to identify the chip and to
+         * verify the presence of the sensor. The get_serial_number command returns
+         * 3 words, and every word is followed by an 8-bit CRC checksum. Together,
+         * the 3 words constitute a unique serial number with a length of 48 bits
+         * (in big endian format). This method takes care of converting the serial
+         * number from the 3 words to an 64 bit unsigned integer.
+         *
+         * @param[out] serialNumber of the sensor as integer.
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getSerialNumber(uint64_t &serialNumber);
+
+        /**
+         * @brief Perform self test to assess sensor functionality and power supply.
+         *
+         * Can be used as an end-of-line test to check the sensor functionality.
+         *
+         * @param[out] sensorStatus If sensor status is equal to 0, no malfunction
+         * has been detected.
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t performSelfTest(uint16_t &sensorStatus);
+
+        /**
+         * @brief Perform factory reset to erase the settings stored in the EEPROM.
+         *
+         * The perform_factory_reset command resets all configuration settings
+         * stored in the EEPROM and erases the FRC and ASC algorithm history.
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t performFactoryReset();
+
+        /**
+         * @brief Reinitialize the sensor by reloading the settings from the EEPROM.
+         *
+         * The reinit command reinitialize the sensor by reloading user settings
+         * from EEPROM. The sensor must be in the idle state before sending the
+         * reinit command. If the reinit command does not trigger the desired
+         * re-initialization, a power-cycle should be applied to the SCD4x.
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t reinit();
+
+        /**
+         * @brief Reads out the SCD4x sensor variant.
+         *
+         * @param[out] sensorVariant Bits[15…12] = 0000 → SCD40 Bits[15…12] = 0001 →
+         * SCD41
+         *
+         * @note This command is only available in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getSensorVariantRaw(uint16_t &sensorVariant);
+
+        /**
+         * @brief On-demand measurement of the CO₂ concentration, temperature, and
+         * humidity.
+         *
+         * The sensor output is read out by using the read_measurement command. The
+         * fastest possible sampling interval for single shot measurements is 5
+         * seconds. The ASC is enabled by default in single shot operation and
+         * optimized for single shot measurements performed every 5 minutes. For
+         * more details about single shot measurements and optimization of power
+         * consumption please refer to the datasheet.
+         *
+         * @note This command is only available for SCD41.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t measureSingleShot();
+
+        /**
+         * @brief On-demand measurement of the temperature and humidity only.
+         *
+         * For more details about single shot measurements and optimization of power
+         * consumption please refer to the datasheet.
+         *
+         * @note This command is only available for SCD41.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t measureSingleShotRhtOnly();
+
+        /**
+         * @brief Put the sensor into sleep mode from idle mode.
+         *
+         * Put the sensor from idle to sleep to reduce power consumption. Can be
+         * used to power down when operating the sensor in power-cycled single shot
+         * mode.
+         *
+         * @note This command is only available in idle mode. Only for SCD41.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t powerDown();
+
+        /**
+         * @brief Wake up sensor from sleep mode to idle mode.
+         *
+         * Wake up the sensor from sleep mode into idle mode. Note that the SCD4x
+         * does not acknowledge the wake_up command. The sensor's idle state after
+         * wake up can be verified by reading out the serial number.
+         *
+         * @note This command is only available for SCD41.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t wakeUp();
+
+        /**
+         * @brief Sets the initial period for ASC correction
+         *
+         * Sets the duration of the initial period for ASC correction (in hours). By
+         * default, the initial period for ASC correction is 44 hours. Allowed
+         * values are integer multiples of 4 hours. A value of 0 results in an
+         * immediate correction. To save the setting to the EEPROM, the
+         * persist_settings command must be issued.
+         *
+         * For single shot operation, this parameter always assumes a measurement
+         * interval of 5 minutes, counting the number of single shots to calculate
+         * elapsed time. If single shot measurements are taken more / less
+         * frequently than once every 5 minutes, this parameter must be scaled
+         * accordingly to achieve the intended period in hours (e.g. for a 10-minute
+         * measurement interval, the scaled parameter value is obtained by
+         * multiplying the intended period in hours by 0.5).
+         *
+         * @param[in] ascInitialPeriod ASC initial period in hours
+         *
+         * @note This command is available for SCD41 and only in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         *
+         * Example:
+         * --------
+         *
+         * @code{.cpp}
+         *
+         *     int16_t localError = 0;
+         *     localError = sensor.setAutomaticSelfCalibrationInitialPeriod(44);
+         *     if (localError != NO_ERROR) {
+         *         return;
+         *     }
+         *
+         * @endcode
+         *
+         */
+        int16_t setAutomaticSelfCalibrationInitialPeriod(uint16_t ascInitialPeriod);
+
+        /**
+         * @brief Read out the initial period for ASC correction
+         *
+         * @param[out] ascInitialPeriod ASC initial period in hours
+         *
+         * @note This command is only available for SCD41 and only in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getAutomaticSelfCalibrationInitialPeriod(uint16_t &ascInitialPeriod);
+
+        /**
+         * @brief Sets the standard period for ASC correction.
+         *
+         * Sets the standard period for ASC correction (in hours). By default, the
+         * standard period for ASC correction is 156 hours. Allowed values are
+         * integer multiples of 4 hours. Note: a value of 0 results in an immediate
+         * correction. To save the setting to the EEPROM, the persist_settings (see
+         * Section 3.10.1) command must be issued.
+         *
+         * For single shot operation, this parameter always assumes a measurement
+         * interval of 5 minutes, counting the number of single shots to calculate
+         * elapsed time. If single shot measurements are taken more / less
+         * frequently than once every 5 minutes, this parameter must be scaled
+         * accordingly to achieve the intended period in hours (e.g. for a 10-minute
+         * measurement interval, the scaled parameter value is obtained by
+         * multiplying the intended period in hours by 0.5).
+         *
+         * @param[in] ascStandardPeriod ASC standard period in hours
+         *
+         * @note This command is only available for SCD41 and only in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         *
+         * Example:
+         * --------
+         *
+         * @code{.cpp}
+         *
+         *     int16_t localError = 0;
+         *     localError = sensor.setAutomaticSelfCalibrationStandardPeriod(156);
+         *     if (localError != NO_ERROR) {
+         *         return;
+         *     }
+         *
+         * @endcode
+         *
+         */
+        int16_t setAutomaticSelfCalibrationStandardPeriod(uint16_t ascStandardPeriod);
+
+        /**
+         * @brief Get the standard period for ASC correction.
+         *
+         * @param[out] ascStandardPeriod ASC standard period in hours
+         *
+         * @note This command is only available for SCD41 and only in idle mode.
+         *
+         * @return error_code 0 on success, an error code otherwise.
+         */
+        int16_t getAutomaticSelfCalibrationStandardPeriod(uint16_t &ascStandardPeriod);
+
+        /**
+         * @brief signalTemperature
+         *
+         * @param[in] rawTemperature
+         *
+         * @return Temperature in °C
+         */
+        static float signalTemperature(uint16_t rawTemperature);
+
+        /**
+         * @brief signalRelativeHumidity
+         *
+         * @param[in] rawRelativeHumidity
+         *
+         * @return Relative humidity in %RH
+         */
+        static float signalRelativeHumidity(uint16_t rawRelativeHumidity);
+
+        /**
+         * @brief signalCo2Concentration
+         *
+         * @param[in] rawCo2Concentration
+         *
+         * @return CO₂ concentration in ppm
+         */
+        static uint16_t signalCo2Concentration(uint16_t rawCo2Concentration);
+
+        /**
+         * @brief signalTemperatureOffset
+         *
+         * @param[in] rawTemperatureOffset
+         *
+         * @return Temperature in °C
+         */
+        static float signalTemperatureOffset(uint16_t rawTemperatureOffset);
+
+        /**
+         * @brief signalAmbientPressure
+         *
+         * @param[in] rawAmbientPressure
+         *
+         * @return Pressure in Pa
+         */
+        static uint32_t signalAmbientPressure(uint16_t rawAmbientPressure);
+
+    private:
+        TwoWire *_i2cBus     = nullptr;
+        uint8_t  _i2cAddress = 0;
+    };
 
 // make sure that we use the proper definition of NO_ERROR
 #    ifdef NO_ERROR
@@ -1779,748 +1778,751 @@ private:
 
 #    define ROUND(x) ((int32_t)((x) + 0.5))
 
-static uint8_t communication_buffer[9] = {0};
+    static uint8_t communication_buffer[9] = {0};
 
-SensirionI2cScd4x::SensirionI2cScd4x() {}
+    SensirionI2cScd4x::SensirionI2cScd4x() {}
 
-float SensirionI2cScd4x::signalTemperature(uint16_t rawTemperature)
-{
-    float temperature = 0.0;
-    temperature       = -45.0 + ((175.0 * rawTemperature) / 65535.0);
-    return temperature;
-}
-
-float SensirionI2cScd4x::signalRelativeHumidity(uint16_t rawRelativeHumidity)
-{
-    float relativeHumidity = 0.0;
-    relativeHumidity       = (100.0 * rawRelativeHumidity) / 65535.0;
-    return relativeHumidity;
-}
-
-uint16_t SensirionI2cScd4x::signalCo2Concentration(uint16_t rawCo2Concentration)
-{
-    uint16_t co2Concentration = 0;
-    co2Concentration          = rawCo2Concentration;
-    return co2Concentration;
-}
-
-float SensirionI2cScd4x::signalTemperatureOffset(uint16_t rawTemperatureOffset)
-{
-    float temperatureOffset = 0.0;
-    temperatureOffset       = (175 * rawTemperatureOffset) / 65535.0;
-    return temperatureOffset;
-}
-
-uint32_t SensirionI2cScd4x::signalAmbientPressure(uint16_t rawAmbientPressure)
-{
-    uint32_t ambientPressure = 0;
-    ambientPressure          = (uint32_t)rawAmbientPressure * 100;
-    return ambientPressure;
-}
-
-int16_t SensirionI2cScd4x::readMeasurement(uint16_t &aCo2Concentration, float &aTemperature, float &aRelativeHumidity)
-{
-    uint16_t rawCo2Concentration = 0;
-    uint16_t rawTemperature      = 0;
-    uint16_t rawRelativeHumidity = 0;
-    int16_t  localError          = 0;
-    localError                   = readMeasurementRaw(rawCo2Concentration, rawTemperature, rawRelativeHumidity);
-    if (localError != NO_ERROR)
+    float SensirionI2cScd4x::signalTemperature(uint16_t rawTemperature)
     {
+        float temperature = 0.0;
+        temperature       = -45.0 + ((175.0 * rawTemperature) / 65535.0);
+        return temperature;
+    }
+
+    float SensirionI2cScd4x::signalRelativeHumidity(uint16_t rawRelativeHumidity)
+    {
+        float relativeHumidity = 0.0;
+        relativeHumidity       = (100.0 * rawRelativeHumidity) / 65535.0;
+        return relativeHumidity;
+    }
+
+    uint16_t SensirionI2cScd4x::signalCo2Concentration(uint16_t rawCo2Concentration)
+    {
+        uint16_t co2Concentration = 0;
+        co2Concentration          = rawCo2Concentration;
+        return co2Concentration;
+    }
+
+    float SensirionI2cScd4x::signalTemperatureOffset(uint16_t rawTemperatureOffset)
+    {
+        float temperatureOffset = 0.0;
+        temperatureOffset       = (175 * rawTemperatureOffset) / 65535.0;
+        return temperatureOffset;
+    }
+
+    uint32_t SensirionI2cScd4x::signalAmbientPressure(uint16_t rawAmbientPressure)
+    {
+        uint32_t ambientPressure = 0;
+        ambientPressure          = (uint32_t)rawAmbientPressure * 100;
+        return ambientPressure;
+    }
+
+    int16_t SensirionI2cScd4x::readMeasurement(uint16_t &aCo2Concentration, float &aTemperature, float &aRelativeHumidity)
+    {
+        uint16_t rawCo2Concentration = 0;
+        uint16_t rawTemperature      = 0;
+        uint16_t rawRelativeHumidity = 0;
+        int16_t  localError          = 0;
+        localError                   = readMeasurementRaw(rawCo2Concentration, rawTemperature, rawRelativeHumidity);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        aCo2Concentration = SensirionI2cScd4x::signalCo2Concentration(rawCo2Concentration);
+        aTemperature      = SensirionI2cScd4x::signalTemperature(rawTemperature);
+        aRelativeHumidity = SensirionI2cScd4x::signalRelativeHumidity(rawRelativeHumidity);
         return localError;
     }
-    aCo2Concentration = SensirionI2cScd4x::signalCo2Concentration(rawCo2Concentration);
-    aTemperature      = SensirionI2cScd4x::signalTemperature(rawTemperature);
-    aRelativeHumidity = SensirionI2cScd4x::signalRelativeHumidity(rawRelativeHumidity);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::setTemperatureOffset(float temperatureOffset)
-{
-    int16_t  localError           = 0;
-    uint16_t rawTemperatureOffset = (uint16_t)ROUND((temperatureOffset * 65535.0) / 175.0);
-    localError                    = setTemperatureOffsetRaw(rawTemperatureOffset);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::setTemperatureOffset(float temperatureOffset)
     {
+        int16_t  localError           = 0;
+        uint16_t rawTemperatureOffset = (uint16_t)ROUND((temperatureOffset * 65535.0) / 175.0);
+        localError                    = setTemperatureOffsetRaw(rawTemperatureOffset);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
         return localError;
     }
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::getTemperatureOffset(float &aTemperatureOffset)
-{
-    uint16_t rawTemperatureOffset = 0;
-    int16_t  localError           = 0;
-    localError                    = getTemperatureOffsetRaw(rawTemperatureOffset);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getTemperatureOffset(float &aTemperatureOffset)
     {
+        uint16_t rawTemperatureOffset = 0;
+        int16_t  localError           = 0;
+        localError                    = getTemperatureOffsetRaw(rawTemperatureOffset);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        aTemperatureOffset = SensirionI2cScd4x::signalTemperatureOffset(rawTemperatureOffset);
+
         return localError;
     }
-    aTemperatureOffset = SensirionI2cScd4x::signalTemperatureOffset(rawTemperatureOffset);
 
-    return localError;
-}
-
-int16_t SensirionI2cScd4x::setAmbientPressure(uint32_t ambientPressure)
-{
-    int16_t  localError         = 0;
-    uint16_t rawAmbientPressure = (uint16_t)ROUND(ambientPressure / 100.0);
-    localError                  = setAmbientPressureRaw(rawAmbientPressure);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::setAmbientPressure(uint32_t ambientPressure)
     {
+        int16_t  localError         = 0;
+        uint16_t rawAmbientPressure = (uint16_t)ROUND(ambientPressure / 100.0);
+        localError                  = setAmbientPressureRaw(rawAmbientPressure);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
         return localError;
     }
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::getAmbientPressure(uint32_t &aAmbientPressure)
-{
-    uint16_t rawAmbientPressure = 0;
-    int16_t  localError         = 0;
-    localError                  = getAmbientPressureRaw(rawAmbientPressure);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getAmbientPressure(uint32_t &aAmbientPressure)
     {
+        uint16_t rawAmbientPressure = 0;
+        int16_t  localError         = 0;
+        localError                  = getAmbientPressureRaw(rawAmbientPressure);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        aAmbientPressure = SensirionI2cScd4x::signalAmbientPressure(rawAmbientPressure);
+
         return localError;
     }
-    aAmbientPressure = SensirionI2cScd4x::signalAmbientPressure(rawAmbientPressure);
 
-    return localError;
-}
-
-int16_t SensirionI2cScd4x::getDataReadyStatus(bool &arg0)
-{
-    uint16_t dataReadyStatus = 0;
-    int16_t  localError      = 0;
-    localError               = getDataReadyStatusRaw(dataReadyStatus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getDataReadyStatus(bool &arg0)
     {
-        return localError;
-    }
-    arg0 = (dataReadyStatus & 2047) != 0;
-    ;
-    return localError;
-}
-
-int16_t SensirionI2cScd4x::getSensorVariant(SCD4xSensorVariant &aSensorVariant)
-{
-    uint16_t rawSensorVariant = 0;
-    int16_t  localError       = 0;
-    localError                = getSensorVariantRaw(rawSensorVariant);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    uint16_t variant = (uint16_t)(rawSensorVariant & 4);
-    if (variant == 0)
-    {
-        aSensorVariant = SCD4X_SENSOR_VARIANT_SCD40;
+        uint16_t dataReadyStatus = 0;
+        int16_t  localError      = 0;
+        localError               = getDataReadyStatusRaw(dataReadyStatus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        arg0 = (dataReadyStatus & 2047) != 0;
         ;
         return localError;
     }
-    else if (variant == 1)
+
+    int16_t SensirionI2cScd4x::getSensorVariant(SCD4xSensorVariant &aSensorVariant)
     {
-        aSensorVariant = SCD4X_SENSOR_VARIANT_SCD41;
+        uint16_t rawSensorVariant = 0;
+        int16_t  localError       = 0;
+        localError                = getSensorVariantRaw(rawSensorVariant);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        uint16_t variant = (uint16_t)(rawSensorVariant & 4);
+        if (variant == 0)
+        {
+            aSensorVariant = SCD4X_SENSOR_VARIANT_SCD40;
+            ;
+            return localError;
+        }
+        else if (variant == 1)
+        {
+            aSensorVariant = SCD4X_SENSOR_VARIANT_SCD41;
+            ;
+            return localError;
+        }
+        aSensorVariant = SCD4X_SENSOR_VARIANT_UNKNOWN;
         ;
         return localError;
     }
-    aSensorVariant = SCD4X_SENSOR_VARIANT_UNKNOWN;
-    ;
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::measureAndReadSingleShot(uint16_t &aCo2Concentration, float &aTemperature, float &aRelativeHumidity)
-{
-    bool    dataReady  = false;
-    int16_t localError = 0;
-    localError         = measureSingleShot();
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::measureAndReadSingleShot(uint16_t &aCo2Concentration, float &aTemperature, float &aRelativeHumidity)
     {
-        return localError;
-    }
-    localError = getDataReadyStatus(dataReady);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    while (!dataReady)
-    {
-        delay(100);
+        bool    dataReady  = false;
+        int16_t localError = 0;
+        localError         = measureSingleShot();
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
         localError = getDataReadyStatus(dataReady);
         if (localError != NO_ERROR)
         {
             return localError;
         }
+        while (!dataReady)
+        {
+            delay(100);
+            localError = getDataReadyStatus(dataReady);
+            if (localError != NO_ERROR)
+            {
+                return localError;
+            }
+        }
+        localError = readMeasurement(aCo2Concentration, aTemperature, aRelativeHumidity);
+        return localError;
     }
-    localError = readMeasurement(aCo2Concentration, aTemperature, aRelativeHumidity);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::startPeriodicMeasurement()
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x21b1, buffer_ptr, 2);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::startPeriodicMeasurement()
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x21b1, buffer_ptr, 2);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
         return localError;
     }
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::readMeasurementRaw(uint16_t &co2Concentration, uint16_t &temperature, uint16_t &relativeHumidity)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0xec05, buffer_ptr, 9);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::readMeasurementRaw(uint16_t &co2Concentration, uint16_t &temperature, uint16_t &relativeHumidity)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0xec05, buffer_ptr, 9);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 9);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 9, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getUInt16(co2Concentration);
+        localError |= rxFrame.getUInt16(temperature);
+        localError |= rxFrame.getUInt16(relativeHumidity);
         return localError;
     }
-    delay(1);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 9);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 9, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getUInt16(co2Concentration);
-    localError |= rxFrame.getUInt16(temperature);
-    localError |= rxFrame.getUInt16(relativeHumidity);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::stopPeriodicMeasurement()
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x3f86, buffer_ptr, 2);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::stopPeriodicMeasurement()
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x3f86, buffer_ptr, 2);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(500);
         return localError;
     }
-    delay(500);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::setTemperatureOffsetRaw(uint16_t offsetTemperature)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x241d, buffer_ptr, 5);
-    localError |= txFrame.addUInt16(offsetTemperature);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::setTemperatureOffsetRaw(uint16_t offsetTemperature)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x241d, buffer_ptr, 5);
+        localError |= txFrame.addUInt16(offsetTemperature);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
         return localError;
     }
-    localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    delay(1);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::getTemperatureOffsetRaw(uint16_t &offsetTemperature)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2318, buffer_ptr, 3);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getTemperatureOffsetRaw(uint16_t &offsetTemperature)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2318, buffer_ptr, 3);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getUInt16(offsetTemperature);
         return localError;
     }
-    delay(1);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getUInt16(offsetTemperature);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::setSensorAltitude(uint16_t sensorAltitude)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2427, buffer_ptr, 5);
-    localError |= txFrame.addUInt16(sensorAltitude);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::setSensorAltitude(uint16_t sensorAltitude)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2427, buffer_ptr, 5);
+        localError |= txFrame.addUInt16(sensorAltitude);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
         return localError;
     }
-    localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    delay(1);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::getSensorAltitude(uint16_t &sensorAltitude)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2322, buffer_ptr, 3);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getSensorAltitude(uint16_t &sensorAltitude)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2322, buffer_ptr, 3);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getUInt16(sensorAltitude);
         return localError;
     }
-    delay(1);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getUInt16(sensorAltitude);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::setAmbientPressureRaw(uint16_t ambientPressure)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0xe000, buffer_ptr, 5);
-    localError |= txFrame.addUInt16(ambientPressure);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::setAmbientPressureRaw(uint16_t ambientPressure)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0xe000, buffer_ptr, 5);
+        localError |= txFrame.addUInt16(ambientPressure);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
         return localError;
     }
-    localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    delay(1);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::getAmbientPressureRaw(uint16_t &ambientPressure)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0xe000, buffer_ptr, 3);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getAmbientPressureRaw(uint16_t &ambientPressure)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0xe000, buffer_ptr, 3);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getUInt16(ambientPressure);
         return localError;
     }
-    delay(1);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getUInt16(ambientPressure);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::performForcedRecalibration(uint16_t targetCO2Concentration, uint16_t &frcCorrection)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x362f, buffer_ptr, 5);
-    localError |= txFrame.addUInt16(targetCO2Concentration);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::performForcedRecalibration(uint16_t targetCO2Concentration, uint16_t &frcCorrection)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x362f, buffer_ptr, 5);
+        localError |= txFrame.addUInt16(targetCO2Concentration);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(400);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 5);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getUInt16(frcCorrection);
         return localError;
     }
-    localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    delay(400);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 5);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getUInt16(frcCorrection);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::setAutomaticSelfCalibrationEnabled(uint16_t ascEnabled)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2416, buffer_ptr, 5);
-    localError |= txFrame.addUInt16(ascEnabled);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::setAutomaticSelfCalibrationEnabled(uint16_t ascEnabled)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2416, buffer_ptr, 5);
+        localError |= txFrame.addUInt16(ascEnabled);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
         return localError;
     }
-    localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    delay(1);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::getAutomaticSelfCalibrationEnabled(uint16_t &ascEnabled)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2313, buffer_ptr, 3);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getAutomaticSelfCalibrationEnabled(uint16_t &ascEnabled)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2313, buffer_ptr, 3);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getUInt16(ascEnabled);
         return localError;
     }
-    delay(1);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getUInt16(ascEnabled);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::setAutomaticSelfCalibrationTarget(uint16_t ascTarget)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x243a, buffer_ptr, 5);
-    localError |= txFrame.addUInt16(ascTarget);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::setAutomaticSelfCalibrationTarget(uint16_t ascTarget)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x243a, buffer_ptr, 5);
+        localError |= txFrame.addUInt16(ascTarget);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
         return localError;
     }
-    localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    delay(1);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::getAutomaticSelfCalibrationTarget(uint16_t &ascTarget)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x233f, buffer_ptr, 3);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getAutomaticSelfCalibrationTarget(uint16_t &ascTarget)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x233f, buffer_ptr, 3);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getUInt16(ascTarget);
         return localError;
     }
-    delay(1);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getUInt16(ascTarget);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::startLowPowerPeriodicMeasurement()
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x21ac, buffer_ptr, 2);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::startLowPowerPeriodicMeasurement()
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x21ac, buffer_ptr, 2);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
         return localError;
     }
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::getDataReadyStatusRaw(uint16_t &dataReadyStatus)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0xe4b8, buffer_ptr, 3);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getDataReadyStatusRaw(uint16_t &dataReadyStatus)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0xe4b8, buffer_ptr, 3);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getUInt16(dataReadyStatus);
         return localError;
     }
-    delay(1);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getUInt16(dataReadyStatus);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::persistSettings()
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x3615, buffer_ptr, 2);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::persistSettings()
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x3615, buffer_ptr, 2);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(800);
         return localError;
     }
-    delay(800);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::getSerialNumber(uint64_t &serialNumber)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x3682, buffer_ptr, 9);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getSerialNumber(uint64_t &serialNumber)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x3682, buffer_ptr, 9);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 9);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 9, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getInteger(reinterpret_cast<uint8_t *>(&serialNumber), LongInteger, 6);
         return localError;
     }
-    delay(1);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 9);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 9, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getInteger(reinterpret_cast<uint8_t *>(&serialNumber), LongInteger, 6);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::performSelfTest(uint16_t &sensorStatus)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x3639, buffer_ptr, 3);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::performSelfTest(uint16_t &sensorStatus)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x3639, buffer_ptr, 3);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(10000);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getUInt16(sensorStatus);
         return localError;
     }
-    delay(10000);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getUInt16(sensorStatus);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::performFactoryReset()
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x3632, buffer_ptr, 2);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::performFactoryReset()
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x3632, buffer_ptr, 2);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1200);
         return localError;
     }
-    delay(1200);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::reinit()
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x3646, buffer_ptr, 2);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::reinit()
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x3646, buffer_ptr, 2);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(30);
         return localError;
     }
-    delay(30);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::getSensorVariantRaw(uint16_t &sensorVariant)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x202f, buffer_ptr, 3);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getSensorVariantRaw(uint16_t &sensorVariant)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x202f, buffer_ptr, 3);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getUInt16(sensorVariant);
         return localError;
     }
-    delay(1);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getUInt16(sensorVariant);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::measureSingleShot()
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x219d, buffer_ptr, 2);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::measureSingleShot()
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x219d, buffer_ptr, 2);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(5000);
         return localError;
     }
-    delay(5000);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::measureSingleShotRhtOnly()
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2196, buffer_ptr, 2);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::measureSingleShotRhtOnly()
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2196, buffer_ptr, 2);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(50);
         return localError;
     }
-    delay(50);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::powerDown()
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x36e0, buffer_ptr, 2);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::powerDown()
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x36e0, buffer_ptr, 2);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
         return localError;
     }
-    delay(1);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::wakeUp()
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x36f6, buffer_ptr, 2);
-    SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    delay(30);
-    return localError;
-}
+    int16_t SensirionI2cScd4x::wakeUp()
+    {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x36f6, buffer_ptr, 2);
+        SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        delay(30);
+        return localError;
+    }
 
-int16_t SensirionI2cScd4x::setAutomaticSelfCalibrationInitialPeriod(uint16_t ascInitialPeriod)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2445, buffer_ptr, 5);
-    localError |= txFrame.addUInt16(ascInitialPeriod);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::setAutomaticSelfCalibrationInitialPeriod(uint16_t ascInitialPeriod)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2445, buffer_ptr, 5);
+        localError |= txFrame.addUInt16(ascInitialPeriod);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
         return localError;
     }
-    localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    delay(1);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::getAutomaticSelfCalibrationInitialPeriod(uint16_t &ascInitialPeriod)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2340, buffer_ptr, 3);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getAutomaticSelfCalibrationInitialPeriod(uint16_t &ascInitialPeriod)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x2340, buffer_ptr, 3);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getUInt16(ascInitialPeriod);
         return localError;
     }
-    delay(1);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getUInt16(ascInitialPeriod);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::setAutomaticSelfCalibrationStandardPeriod(uint16_t ascStandardPeriod)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x244e, buffer_ptr, 5);
-    localError |= txFrame.addUInt16(ascStandardPeriod);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::setAutomaticSelfCalibrationStandardPeriod(uint16_t ascStandardPeriod)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x244e, buffer_ptr, 5);
+        localError |= txFrame.addUInt16(ascStandardPeriod);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
         return localError;
     }
-    localError = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    delay(1);
-    return localError;
-}
 
-int16_t SensirionI2cScd4x::getAutomaticSelfCalibrationStandardPeriod(uint16_t &ascStandardPeriod)
-{
-    int16_t             localError = NO_ERROR;
-    uint8_t            *buffer_ptr = communication_buffer;
-    SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x234b, buffer_ptr, 3);
-    localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
-    if (localError != NO_ERROR)
+    int16_t SensirionI2cScd4x::getAutomaticSelfCalibrationStandardPeriod(uint16_t &ascStandardPeriod)
     {
+        int16_t             localError = NO_ERROR;
+        uint8_t            *buffer_ptr = communication_buffer;
+        SensirionI2CTxFrame txFrame    = SensirionI2CTxFrame::createWithUInt16Command(0x234b, buffer_ptr, 3);
+        localError                     = SensirionI2CCommunication::sendFrame(_i2cAddress, txFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        delay(1);
+        SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
+        localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
+        if (localError != NO_ERROR)
+        {
+            return localError;
+        }
+        localError |= rxFrame.getUInt16(ascStandardPeriod);
         return localError;
     }
-    delay(1);
-    SensirionI2CRxFrame rxFrame(buffer_ptr, 3);
-    localError = SensirionI2CCommunication::receiveFrame(_i2cAddress, 3, rxFrame, *_i2cBus);
-    if (localError != NO_ERROR)
-    {
-        return localError;
-    }
-    localError |= rxFrame.getUInt16(ascStandardPeriod);
-    return localError;
-}
 
-void SensirionI2cScd4x::begin(TwoWire &i2cBus, uint8_t i2cAddress)
-{
-    _i2cBus     = &i2cBus;
-    _i2cAddress = i2cAddress;
-}
+    void SensirionI2cScd4x::begin(TwoWire &i2cBus, uint8_t i2cAddress)
+    {
+        _i2cBus     = &i2cBus;
+        _i2cAddress = i2cAddress;
+    }
+}  // namespace nscd4x
+#    include "rdno_sensors/c_scd4x.h"
+#    include "rdno_core/c_allocator.h"
 
 namespace ncore
 {
     namespace nsensors
     {
-        SensirionI2cScd4x *scd4x = nullptr;
+        nscd4x::SensirionI2cScd4x *scd4x = nullptr;
 
         bool initSCD41(alloc_t *allocator, u8 i2c_address)
         {
             if (scd4x == nullptr)
             {
-                scd4x = allocator->construct<SensirionI2cScd4x>();
+                scd4x = allocator->construct<nscd4x::SensirionI2cScd4x>();
                 if (scd4x != nullptr)
-                    scd4x->begin(*Wire, i2c_address);
+                    scd4x->begin(Wire, i2c_address);
             }
             return (scd4x != nullptr);
         }
@@ -2552,7 +2554,8 @@ namespace ncore
 
 #else
 
-
+#include "rdno_sensors/c_scd4x.h"
+#include "rdno_core/c_allocator.h"
 
 namespace ncore
 {
@@ -2562,12 +2565,14 @@ namespace ncore
 
         struct SensirionI2cScd4x
         {
+            DCORE_CLASS_PLACEMENT_NEW_DELETE
+
             u16 readMeasurement(u16 &co2, float &temperature, float &humidity)
             {
                 // Simulate reading measurement
-                co2        = 400;  // Example CO2 value
-                temperature = 25.0; // Example temperature value
-                humidity    = 50.0; // Example humidity value
+                co2         = 400;   // Example CO2 value
+                temperature = 25.0;  // Example temperature value
+                humidity    = 50.0;  // Example humidity value
                 return NO_ERROR;
             }
         };
@@ -2607,6 +2612,5 @@ namespace ncore
 
     }  // namespace nsensors
 }  // namespace ncore
-
 
 #endif

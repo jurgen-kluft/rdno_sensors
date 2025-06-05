@@ -2,7 +2,9 @@ package rdno_sensors
 
 import (
 	denv "github.com/jurgen-kluft/ccode/denv"
+	cunittest "github.com/jurgen-kluft/cunittest/package"
 	rdno_core "github.com/jurgen-kluft/rdno_core/package"
+	rdno_wire "github.com/jurgen-kluft/rdno_wire/package"
 )
 
 const (
@@ -18,14 +20,34 @@ const (
 func GetPackage() *denv.Package {
 	name := repo_name
 
+	// dependencies
+	cunittestpkg := cunittest.GetPackage()
 	corepkg := rdno_core.GetPackage()
+	wirepkg := rdno_wire.GetPackage()
 
+	// main package
 	mainpkg := denv.NewPackage(repo_path, repo_name)
 	mainpkg.AddPackage(corepkg)
+	mainpkg.AddPackage(wirepkg)
+	mainpkg.AddPackage(cunittestpkg)
 
+	// main library
 	mainlib := denv.SetupCppLibProject(mainpkg, name)
 	mainlib.AddDependencies(corepkg.GetMainLib()...)
+	mainlib.AddDependencies(wirepkg.GetMainLib()...)
+
+	// test library
+	testlib := denv.SetupCppTestLibProject(mainpkg, name)
+	testlib.AddDependencies(corepkg.GetTestLib()...)
+	testlib.AddDependencies(wirepkg.GetTestLib()...)
+
+	// unittest project
+	maintest := denv.SetupCppTestProject(mainpkg, name)
+	maintest.AddDependencies(cunittestpkg.GetMainLib()...)
+	maintest.AddDependency(testlib)
 
 	mainpkg.AddMainLib(mainlib)
+	mainpkg.AddTestLib(testlib)
+	mainpkg.AddUnittest(maintest)
 	return mainpkg
 }
