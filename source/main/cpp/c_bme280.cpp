@@ -1,7 +1,7 @@
 #ifdef TARGET_ESP32
 
-#include "Arduino.h"
-#include "Wire.h"
+#    include "Arduino.h"
+#    include "Wire.h"
 
 namespace nbme280
 {
@@ -11,6 +11,36 @@ namespace nbme280
     // the Bme280 environmental sensor.
     //
     // https://www.bosch-sensortec.com/products/environmental-sensors/humidity-sensors/bme280/
+
+    /*
+    BME280.cpp
+    This code records data from the BME280 sensor and provides an API.
+    This file is part of the Arduino BME280 library.
+    Copyright (C) 2016   Tyler Glenn
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.   See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.   If not, see <http://www.gnu.org/licenses/>.
+
+    Written: Dec 30 2015.
+    Last Updated: Oct 07 2017.
+
+    This header must be included in any derived code or copies of the code.
+
+    Based on the data sheet provided by Bosch for the Bme280 environmental sensor,
+    calibration code based on algorithms providedBosch, some unit conversations courtesy
+    of www.endmemo.com, altitude equation courtesy of NOAA, and dew point equation
+    courtesy of Brian McNoldy at http://andrew.rsmas.miami.edu.
+     */
 
     class IReadWriteRegister
     {
@@ -136,7 +166,7 @@ namespace nbme280
         // Constructor used to create the class.
         // All parameters have default values.
         BME280(const Settings& settings);
-    
+
         // Method used to initialize the class.
         bool begin(IReadWriteRegister* readWrite);
 
@@ -319,7 +349,7 @@ namespace nbme280
         success &= m_readWriteReg->ReadRegister(HUM_DIG_ADDR2, &m_dig[ord], HUM_DIG_ADDR2_LENGTH);
         ord += HUM_DIG_ADDR2_LENGTH;
 
-#ifdef TARGET_DEBUG
+#    ifdef TARGET_DEBUG
         Serial.print("Dig: ");
         for (int i = 0; i < 32; ++i)
         {
@@ -327,7 +357,7 @@ namespace nbme280
             Serial.print(" ");
         }
         Serial.println();
-#endif
+#    endif
 
         return success && ord == DIG_LENGTH;
     }
@@ -351,7 +381,7 @@ namespace nbme280
             data[i] = static_cast<int32_t>(buffer[i]);
         }
 
-#ifdef TARGET_DEBUG
+#    ifdef TARGET_DEBUG
         Serial.print("Data: ");
         for (int i = 0; i < 8; ++i)
         {
@@ -359,7 +389,7 @@ namespace nbme280
             Serial.print(" ");
         }
         Serial.println();
-#endif
+#    endif
 
         return success;
     }
@@ -557,15 +587,15 @@ namespace nbme280
 
 }  // namespace nbme280
 
-#include "rdno_sensors/c_bme280.h"
-#include "rdno_core/c_allocator.h"
+#    include "rdno_sensors/c_bme280.h"
+#    include "rdno_core/c_allocator.h"
 
 namespace ncore
 {
     namespace nsensors
     {
         nbme280::Bme280ReadWriteI2CRegister* gReadWriteRegister = nullptr;
-        nbme280::BME280* gBme280 = nullptr;
+        nbme280::BME280*                     gBme280            = nullptr;
 
         bool initBME280(alloc_t* allocator, u8 i2c_address)
         {
@@ -594,28 +624,25 @@ namespace ncore
         }
     }  // namespace nsensors
 
-}
+}  // namespace ncore
 
 #else
 
-#include "rdno_sensors/c_bme280.h"
+#    include "rdno_sensors/c_bme280.h"
 
 namespace ncore
 {
     namespace nsensors
     {
-        bool initBME280(alloc_t* allocator, u8 i2c_address)
-        {
-            return true;
-        }
+        bool initBME280(alloc_t* allocator, u8 i2c_address) { return true; }
 
         void updateBME280(f32& outPressure, f32& outTemperature, f32& outHumidity)
         {
-                outPressure    = 1000.0f;
-                outTemperature = 25.0f;
-                outHumidity    = 49.99f;
+            outPressure    = 1000.0f;
+            outTemperature = 25.0f;
+            outHumidity    = 49.99f;
         }
     }  // namespace nsensors
-}
+}  // namespace ncore
 
 #endif
