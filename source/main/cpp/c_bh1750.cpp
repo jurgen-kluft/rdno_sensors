@@ -346,7 +346,9 @@ namespace ncore
 {
     namespace nsensors
     {
-        nbh1750::BH1750* bh1750 = nullptr;
+        nbh1750::BH1750* bh1750        = nullptr;
+        bool             bh1750_active = false;
+        s32              bh1750_lux    = 0;
 
         bool initBH1750(alloc_t* allocator, u8 i2c_address)
         {
@@ -354,20 +356,35 @@ namespace ncore
             {
                 bh1750 = allocator->construct<nbh1750::BH1750>();
                 bh1750->initialize(i2c_address);
-                return bh1750->begin();
+                bh1750_active = bh1750->begin();
             }
-            return false;
+            return bh1750_active;
         }
 
         // Light in lux
         bool updateBH1750(s32& outLuxValue)
         {
-            if ((bh1750 != nullptr) && bh1750->measurementReady())
+            if (bh1750 == nullptr)
             {
-                outLuxValue = static_cast<s32>(bh1750->readLightLevel());
+                bh1750_lux  = 0;
+                outLuxValue = 0;
+                return false;
+            }
+
+            if (!bh1750_active)
+            {
+                bh1750_lux    = 0;
+                outLuxValue   = 0;
+                bh1750_active = bh1750->begin();
+                return bh1750_active;
+            }
+
+            if (bh1750->measurementReady())
+            {
+                bh1750_lux  = static_cast<s32>(bh1750->readLightLevel());
+                outLuxValue = bh1750_lux;
                 return true;
             }
-            outLuxValue = -1;
             return false;
         }
 
@@ -382,10 +399,13 @@ namespace ncore
     {
         struct Bh1750Sensor
         {
-            Bh1750Sensor() : m_Lux(42) {}
+            Bh1750Sensor()
+                : m_Lux(42)
+            {
+            }
 
             DCORE_CLASS_PLACEMENT_NEW_DELETE
-            
+
             s32 m_Lux;
         };
 
@@ -415,6 +435,5 @@ namespace ncore
 
     }  // namespace nsensors
 }  // namespace ncore
-
 
 #endif

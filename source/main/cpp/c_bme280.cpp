@@ -607,13 +607,9 @@ namespace ncore
 
         void updateBME280(f32& outPressure, f32& outTemperature, f32& outHumidity)
         {
-            if (gBme280)
+            if (gBme280 != nullptr)
             {
-                float pressure, temperature, humidity;
-                gBme280->read(pressure, temperature, humidity);
-                outPressure    = pressure;
-                outTemperature = temperature;
-                outHumidity    = humidity;
+                gBme280->read(outPressure, outTemperature, outHumidity);
             }
             else
             {

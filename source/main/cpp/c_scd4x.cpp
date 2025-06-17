@@ -2535,10 +2535,10 @@ namespace ncore
         {
             if (scd4x != nullptr)
             {
-                u16   co2;
-                float humidity;
-                float temperature;
-                u16   error = scd4x->readMeasurement(co2, temperature, humidity);
+                u16       co2;
+                float     humidity;
+                float     temperature;
+                const u16 error = scd4x->readMeasurement(co2, temperature, humidity);
                 if (error == NO_ERROR)
                 {
                     outHumidity    = humidity;
@@ -2547,6 +2547,9 @@ namespace ncore
                     return true;
                 }
             }
+
+            outHumidity    = 0.0f;
+            outTemperature = 0.0f;
             return false;
         }
 
@@ -2555,8 +2558,8 @@ namespace ncore
 
 #else
 
-#include "rdno_sensors/c_scd4x.h"
-#include "rdno_core/c_allocator.h"
+#    include "rdno_sensors/c_scd4x.h"
+#    include "rdno_core/c_allocator.h"
 
 namespace ncore
 {
