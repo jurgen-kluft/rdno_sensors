@@ -12,11 +12,11 @@ namespace ncore
     {
         bool initHMMD(u8 rxPin, u8 txPin)
         {
-            nserial2::Begin(nbaud::Rate115200, nconfig::MODE_8N1, rxPin, txPin);
+            nserial2::begin(nbaud::Rate115200, nconfig::MODE_8N1, rxPin, txPin);
 
             // Put the sensor into the correct output mode and keep it active
             const byte command[] = {0xFD, 0xFC, 0xFB, 0xFA, 0x08, 0x00, 0x12, 0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00, 0x04, 0x03, 0x02, 0x01};
-            nserial2::Write(command, sizeof(command));
+            nserial2::write(command, sizeof(command));
 
             return true;
         }
@@ -27,10 +27,10 @@ namespace ncore
             memset(line, 0, sizeof(line));
 
             // Check if data is available on Serial2
-            while (nserial2::Available() > 0)
+            while (nserial2::available() > 0)
             {
                 // Read a line of text until a newline character (\n) is received
-                s32  lineLength = nserial2::ReadUntil('\n', line, 128 - 1);
+                s32  lineLength = nserial2::read_until('\n', line, 128 - 1);
 
                 // Clean up the line: remove potential carriage return (\r) and leading/trailing whitespace
                 char* begin = line;
@@ -69,7 +69,6 @@ namespace ncore
     {
         bool initHMMD(u8 rxPin, u8 txPin)
         {
-            (void*)allocator;  // Suppress unused parameter warning
             (void)rxPin;       // Suppress unused parameter warning
             (void)txPin;       // Suppress unused parameter warning
 
