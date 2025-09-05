@@ -10,7 +10,8 @@ namespace ncore
     namespace nsensors
     {
         bool initHMMD(u8 rxPin, u8 txPin);
-        bool readHMMD(f32* outDistance);
+        bool readHMMD(u8* outDetection, u16* outDistanceInCm);
+        bool readHMMD2(u8* outDetection, u16* outDistanceInCm);
 
     }  // namespace nsensors
 }  // namespace ncore
