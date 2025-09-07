@@ -25,11 +25,29 @@ namespace ncore
         along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
         Written: Dec 30 2015.
-        Last Updated: Dec 23 2017. 
+        Last Updated: Dec 23 2017.
 
         This header must be included in any derived code or copies of the code.
 
         */
+
+        bool valid_temperature(f32 temperature)
+        {
+            if (isnan(temperature))
+                return false;
+            return (temperature > -100.0f && temperature < 100.0f);
+        }
+
+        bool valid_humidity(f32 humidity) { return (humidity >= 0.0f && humidity <= 100.0f); }
+        bool valid_pressure(f32 pressure) { return (pressure > 300.0f && pressure < 1500.0f); }
+
+        bool valid_temperature(s8 temperature) { return (temperature > -40 && temperature < 85); }
+        bool valid_humidity(u8 humidity) { return (humidity <= 100); }
+        bool valid_pressure(u16 pressure) { return (pressure > 300 && pressure < 1500); }
+
+        bool valid_co2(u16 co2) { return (co2 > 0 && co2 < 10000); }
+        bool valid_lux(u16 lux) { return (lux < 100000); }
+
 #define hi_coeff1 -42.379f
 #define hi_coeff2 2.04901523f
 #define hi_coeff3 10.14333127f

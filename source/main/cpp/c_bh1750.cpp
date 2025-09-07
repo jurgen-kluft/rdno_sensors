@@ -13,6 +13,7 @@ namespace nbh1750
     // 0x5C is the default address for some modules
     // 0x5C is used by the Adafruit library
     // 0x23 is used by the SparkFun library
+#    define BH1750_I2C_ADDRESS 0x23
 
 // No active state
 #    define BH1750_POWER_DOWN 0x00
@@ -348,7 +349,7 @@ namespace ncore
     {
         nbh1750::BH1750* bh1750        = nullptr;
         bool             bh1750_active = false;
-        s32              bh1750_lux    = 0;
+        u16              bh1750_lux    = 0;
 
         bool initBH1750(alloc_t* allocator, u8 i2c_address)
         {
@@ -362,7 +363,7 @@ namespace ncore
         }
 
         // Light in lux
-        bool updateBH1750(s32& outLuxValue)
+        bool updateBH1750(u16& outLuxValue)
         {
             if (bh1750 == nullptr)
             {
@@ -374,7 +375,7 @@ namespace ncore
             if (!bh1750_active)
             {
                 bh1750_lux    = 0;
-                outLuxValue   = 0;
+                outLuxValue   = 65535;
                 bh1750_active = bh1750->begin();
                 return bh1750_active;
             }

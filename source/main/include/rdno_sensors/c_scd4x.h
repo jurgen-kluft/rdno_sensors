@@ -11,7 +11,7 @@ namespace ncore
 
     namespace nsensors
     {
-        bool initSCD41(alloc_t* allocator, u8 i2c_address);
+        bool initSCD41(alloc_t* allocator);
 
         // outHumidity: relative humidity in percent
         // outTemperature: temperature in degrees Celsius

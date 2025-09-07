@@ -180,7 +180,7 @@ namespace nbme280
         float hum();
 
         // Read the data from the BME280 in the specified unit.
-        void read(float& pressure, float& temperature, float& humidity, TempUnit tempUnit = TempUnit_Celsius, PresUnit presUnit = PresUnit_hPa);
+        bool read(float& pressure, float& temperature, float& humidity, TempUnit tempUnit = TempUnit_Celsius, PresUnit presUnit = PresUnit_hPa);
 
         // Write configuration to BME280, return true if successful.
         // Must be called from any child classes.
@@ -526,14 +526,14 @@ namespace nbme280
         return CalculateHumidity(rawHumidity, t_fine);
     }
 
-    void BME280::read(float& pressure, float& temp, float& humidity, TempUnit tempUnit, PresUnit presUnit)
+    bool BME280::read(float& pressure, float& temp, float& humidity, TempUnit tempUnit, PresUnit presUnit)
     {
         int32_t data[8];
         int32_t t_fine;
         if (!ReadData(data))
         {
             pressure = temp = humidity = NAN;
-            return;
+            return false;
         }
         uint32_t rawPressure = (data[0] << 12) | (data[1] << 4) | (data[2] >> 4);
         uint32_t rawTemp     = (data[3] << 12) | (data[4] << 4) | (data[5] >> 4);
@@ -541,13 +541,14 @@ namespace nbme280
         temp                 = CalculateTemperature(rawTemp, t_fine, tempUnit);
         pressure             = CalculatePressure(rawPressure, t_fine, presUnit);
         humidity             = CalculateHumidity(rawHumidity, t_fine);
+        return true;
     }
 
     class Bme280ReadWriteI2CRegister : public IReadWriteRegister
     {
     public:
         Bme280ReadWriteI2CRegister(uint8_t bme280Addr = 0x76)
-            : m_bme280Addr(m_bme280Addr)
+            : m_bme280Addr(bme280Addr)
         {
         }
 
@@ -602,22 +603,52 @@ namespace ncore
             gReadWriteRegister = allocator->construct<nbme280::Bme280ReadWriteI2CRegister>(i2c_address);
             nbme280::Settings settings;
             gBme280 = allocator->construct<nbme280::BME280>(settings);
-            return gBme280->begin(gReadWriteRegister);
+            while (!gBme280->begin(gReadWriteRegister))
+            {
+                Serial.println("BME280 init failed, retrying...");
+                delay(1000);
+            }
+
+            switch (gBme280->m_chip_model)
+            {
+                case nbme280::ChipModel_BME280: Serial.println("Found BME280 sensor! "); break;
+                case nbme280::ChipModel_BMP280: Serial.println("Found BMP280 sensor! "); break;
+                default: Serial.println("Error unknown sensor! "); return false;
+            }
+            return true;
         }
 
-        void updateBME280(f32& outPressure, f32& outTemperature, f32& outHumidity)
+        bool updateBME280(f32& outPressure, f32& outTemperature, f32& outHumidity)
         {
-            if (gBme280 != nullptr)
-            {
-                gBme280->read(outPressure, outTemperature, outHumidity);
-            }
-            else
+            if (gBme280 == nullptr || !gBme280->read(outPressure, outTemperature, outHumidity))
             {
                 outPressure    = 0;
-                outTemperature = 0.0f;
+                outTemperature = -100.0f;
                 outHumidity    = 0;
+                return false;
             }
+            return true;
         }
+
+        bool updateBME280(u16& outPressure, s8& outTemperature, u16& outHumidity)
+        {
+            f32 outPressureF;
+            f32 outTemperatureF;
+            f32 outHumidityF;
+            if (gBme280 == nullptr || !gBme280->read(outPressureF, outTemperatureF, outHumidityF))
+            {
+                outPressure    = 0;
+                outTemperature = -100;
+                outHumidity    = 0;
+                return false;
+            }
+
+            outPressure    = static_cast<u16>(outPressureF);
+            outTemperature = static_cast<s8>(outTemperatureF);
+            outHumidity    = static_cast<u16>(outHumidityF);
+            return true;
+        }
+
     }  // namespace nsensors
 
 }  // namespace ncore
@@ -634,10 +665,18 @@ namespace ncore
 
         void updateBME280(f32& outPressure, f32& outTemperature, f32& outHumidity)
         {
-            outPressure    = 1000.0f;
+            outPressure    = 1024.0f;
             outTemperature = 25.0f;
-            outHumidity    = 49.99f;
+            outHumidity    = 49.f;
         }
+
+        void updateBME280(u16& outPressure, s8& outTemperature, u16& outHumidity)
+        {
+            outPressure    = 1024;
+            outTemperature = 25;
+            outHumidity    = 49;
+        }
+
     }  // namespace nsensors
 }  // namespace ncore
 

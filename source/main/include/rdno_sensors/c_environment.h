@@ -23,6 +23,17 @@ namespace ncore
             AltitudeUnit_Feet
         };
 
+        bool valid_temperature(f32 temperature);  // in °C
+        bool valid_humidity(f32 humidity);        // in %
+        bool valid_pressure(f32 pressure);        // in hPa
+
+        bool valid_temperature(s8 temperature);  // in °C
+        bool valid_humidity(u8 humidity);        // in %
+        bool valid_pressure(u16 pressure);       // in hPa
+
+        bool valid_co2(u16 co2);  // in ppm
+        bool valid_lux(u16 co2);  // in lux
+
         // conversion from [°C] to [°F]
         inline f32 CelciusToFahrenheit(f32 celsius) { return (celsius * 9.0f / 5.0f) + 32.0f; }
         // conversion from [°F] to [°C]

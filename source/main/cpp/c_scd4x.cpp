@@ -51,6 +51,8 @@ namespace nscd4x
 {
     // ---------------------------------------------------------------------------------------------------------
     // ---------------------------------------------------------------------------------------------------------
+#    define SCD40_I2C_ADDR_62 0x62
+#    define SCD41_I2C_ADDR_62 0x62
 
     enum HighLevelError : uint16_t
     {
@@ -486,9 +488,6 @@ namespace nscd4x
          */
         static uint16_t receiveFrame(uint8_t address, size_t numBytes, SensirionI2CRxFrame &frame, TwoWire &i2cBus, CrcPolynomial poly = CRC31_ff);
     };
-
-#    define SCD40_I2C_ADDR_62 0x62
-#    define SCD41_I2C_ADDR_62 0x62
 
     typedef enum
     {
@@ -1006,7 +1005,7 @@ namespace nscd4x
          *
          * @param i2cBus Arduino stream object to be used for communication.
          */
-        void begin(TwoWire &i2cBus, uint8_t i2cAddress);
+        void begin(TwoWire &i2cBus, uint8_t i2cAddress = SCD41_I2C_ADDR_62);
 
         /**
          * @brief Read CO₂, temperature, and humidity measurements in physical
@@ -2508,6 +2507,7 @@ namespace nscd4x
         _i2cAddress = i2cAddress;
     }
 }  // namespace nscd4x
+
 #    include "rdno_sensors/c_scd4x.h"
 #    include "rdno_core/c_allocator.h"
 
@@ -2517,13 +2517,19 @@ namespace ncore
     {
         nscd4x::SensirionI2cScd4x *scd4x = nullptr;
 
-        bool initSCD41(alloc_t *allocator, u8 i2c_address)
+        bool initSCD41(alloc_t *allocator)
         {
             if (scd4x == nullptr)
             {
                 scd4x = allocator->construct<nscd4x::SensirionI2cScd4x>();
                 if (scd4x != nullptr)
-                    scd4x->begin(Wire, i2c_address);
+                {
+                    scd4x->begin(Wire);
+                    scd4x->wakeUp();
+                    scd4x->stopPeriodicMeasurement();
+                    scd4x->reinit();
+                    scd4x->startPeriodicMeasurement();
+                }
             }
             return (scd4x != nullptr);
         }
@@ -2536,8 +2542,8 @@ namespace ncore
             if (scd4x != nullptr)
             {
                 u16       co2;
-                float     humidity;
                 float     temperature;
+                float     humidity;
                 const u16 error = scd4x->readMeasurement(co2, temperature, humidity);
                 if (error == NO_ERROR)
                 {
@@ -2549,7 +2555,8 @@ namespace ncore
             }
 
             outHumidity    = 0.0f;
-            outTemperature = 0.0f;
+            outTemperature = -100.0f;
+            outCo2         = 0;
             return false;
         }
 
