@@ -1,8 +1,8 @@
-#    include "rdno_core/c_memory.h"
-#    include "rdno_core/c_serial.h"
-#    include "rdno_core/c_str.h"
+#include "rdno_core/c_memory.h"
+#include "rdno_core/c_serial.h"
+#include "rdno_core/c_str.h"
 
-#    include "rdno_sensors/c_hmmd.h"
+#include "rdno_sensors/c_hmmd.h"
 
 namespace ncore
 {
@@ -40,59 +40,49 @@ namespace ncore
         //   Frame Tail (F8 F7 F6 F5)
         // Total data frame length = 4 + 2 + 1 + 2 + 32 + 4 = 45 bytes
 
-        static inline bool matchesFrameHeader(const byte* buffer, s32 pos, s32 bufferSize)
+// Rx buffer size must be a power of two for the circular buffer logic to work correctly
+#define hmmdRxBufferSize     256
+#define hmmdRxBufferSizeMask 255
+#define hmmdFrameLength      45
+
+        static inline bool matchesFrameHeader(const byte* buffer, s32 pos)
         {
-            if (buffer[pos] == 0xF4)
-            {
-                pos = (pos + 1) & (bufferSize - 1);
-                if (buffer[pos] == 0xF3)
-                {
-                    pos = (pos + 1) & (bufferSize - 1);
-                    if (buffer[pos] == 0xF2)
-                    {
-                        pos = (pos + 1) & (bufferSize - 1);
-                        return (buffer[pos] == 0xF1);
-                    }
-                }
-            }
-            return false;
+            u32 header = buffer[pos];
+            pos        = (pos + 1) & hmmdRxBufferSizeMask;
+            header     = (header << 8) | buffer[pos];
+            pos        = (pos + 1) & hmmdRxBufferSizeMask;
+            header     = (header << 8) | buffer[pos];
+            pos        = (pos + 1) & hmmdRxBufferSizeMask;
+            header     = (header << 8) | buffer[pos];
+            return (header == 0xF4F3F2F1);
         }
 
-        static inline bool matchesFrameTail(const byte* buffer, s32 readPos, s32 frameSize, s32 bufferSize)
+        static inline bool matchesFrameTail(const byte* buffer, s32 tailPos, s32 frameSize)
         {
-            readPos = (readPos + frameSize - 4) & (bufferSize - 1);
-            if (buffer[readPos] == 0xF8)
-            {
-                readPos = (readPos + 1) & (bufferSize - 1);
-                if (buffer[readPos] == 0xF7)
-                {
-                    readPos = (readPos + 1) & (bufferSize - 1);
-                    if (buffer[readPos] == 0xF6)
-                    {
-                        readPos = (readPos + 1) & (bufferSize - 1);
-                        return (buffer[readPos] == 0xF5);
-                    }
-                }
-            }
-            return false;
+            u32 tail = buffer[tailPos];
+            tailPos  = (tailPos + 1) & hmmdRxBufferSizeMask;
+            tail     = (tail << 8) | buffer[tailPos];
+            tailPos  = (tailPos + 1) & hmmdRxBufferSizeMask;
+            tail     = (tail << 8) | buffer[tailPos];
+            tailPos  = (tailPos + 1) & hmmdRxBufferSizeMask;
+            tail     = (tail << 8) | buffer[tailPos];
+            return (tail == 0xF8F7F6F5);
         }
-
-#    define hmmdRxBufferSize 256
-#    define hmmdFrameLength  45
 
         // Circular 'moving window' buffer for receiving data from the HMMD sensor
         byte hmmdRxBuffer[hmmdRxBufferSize];
         s32  hmmdRxBufferReadPos  = 0;
         s32  hmmdRxBufferWritePos = 0;
 
-        bool readHMMD2(u8* outDetection, u16* outDistanceInCm)
+        // Read data from the HMMD sensor in 'report' mode
+        bool readHMMD2(s8* outDetection, u16* outDistanceInCm)
         {
             // Drain data from Serial2
             s32 available = nserial2::available();
             while (available > 0)
             {
                 // Calculate the current length of read data in the buffer, taking into account wrap-around of the circular buffer
-                s32 currentFrameLength = (hmmdRxBufferWritePos + hmmdRxBufferSize - hmmdRxBufferReadPos) & (hmmdRxBufferSize - 1);
+                s32 currentFrameLength = (hmmdRxBufferWritePos + hmmdRxBufferSize - hmmdRxBufferReadPos) & hmmdRxBufferSizeMask;
 
                 // Read available bytes into the buffer
                 while (available > 0 && currentFrameLength < hmmdRxBufferSize)
@@ -105,7 +95,7 @@ namespace ncore
                         available = -1;  // Error condition, exit the loop
                         break;
                     }
-                    hmmdRxBufferWritePos = (hmmdRxBufferWritePos + numBytesRead) & (hmmdRxBufferSize - 1);
+                    hmmdRxBufferWritePos = (hmmdRxBufferWritePos + numBytesRead) & hmmdRxBufferSizeMask;
                     currentFrameLength   = currentFrameLength + numBytesRead;
                     available            = available - numBytesRead;
                 }
@@ -118,38 +108,38 @@ namespace ncore
                     bool foundHeader = false;
                     while (currentFrameLength >= hmmdFrameLength)
                     {
-                        if (matchesFrameHeader(hmmdRxBuffer, hmmdRxBufferReadPos, hmmdRxBufferSize))
+                        if (hmmdRxBuffer[hmmdRxBufferReadPos] == 0xF4 && matchesFrameHeader(hmmdRxBuffer, hmmdRxBufferReadPos))
                         {
                             foundHeader = true;  // Found a valid frame header
                             break;
                         }
-                        hmmdRxBufferReadPos = (hmmdRxBufferReadPos + 1) & (hmmdRxBufferSize - 1);  // Move read position forward by one byte
-                        currentFrameLength--;                                                      // Decrease the current frame length
+                        hmmdRxBufferReadPos = (hmmdRxBufferReadPos + 1) & hmmdRxBufferSizeMask;  // Move read position forward by one byte
+                        currentFrameLength--;                                                    // Decrease the current frame length
                     }
 
                     if (foundHeader && currentFrameLength >= hmmdFrameLength)
                     {
-                        // We know the length of a complete frame, so verify the frame tail
-                        if (!matchesFrameTail(hmmdRxBuffer, hmmdRxBufferReadPos, hmmdFrameLength, hmmdRxBufferSize))
+                        const s32 tailPos = (hmmdRxBufferReadPos + hmmdFrameLength - 4) & hmmdRxBufferSizeMask;
+                        if (hmmdRxBuffer[tailPos] == 0xF8 && matchesFrameTail(hmmdRxBuffer, tailPos, hmmdFrameLength))
                         {
-                            // We have a valid frame header but invalid frame tail?
-                            // Move read position forward by one byte
-                            hmmdRxBufferReadPos = (hmmdRxBufferReadPos + 1) & (hmmdRxBufferSize - 1);
-                            continue;
+                            // Extract the detection result (byte 6)
+                            const s32 detectionPos = (hmmdRxBufferReadPos + 6) & hmmdRxBufferSizeMask;
+                            *outDetection          = static_cast<s8>(hmmdRxBuffer[detectionPos]);
+
+                            // Extract the target distance (bytes 7 and 8)
+                            const s32 distancePosL = (hmmdRxBufferReadPos + 7) & hmmdRxBufferSizeMask;
+                            const s32 distancePosH = (hmmdRxBufferReadPos + 8) & hmmdRxBufferSizeMask;
+                            *outDistanceInCm       = static_cast<u16>(hmmdRxBuffer[distancePosL]) | (static_cast<u16>(hmmdRxBuffer[distancePosH]) << 8);
+
+                            // Move read position to the next frame
+                            hmmdRxBufferReadPos += hmmdFrameLength;
+
+                            return true;
                         }
 
-                        // Extract the detection result (byte 6)
-                        const s32 detectionPos = (hmmdRxBufferReadPos + 6) & (hmmdRxBufferSize - 1);
-                        *outDetection          = static_cast<u8>(hmmdRxBuffer[detectionPos]);
-                        // Extract the target distance (bytes 7 and 8)
-                        const s32 distancePosL = (hmmdRxBufferReadPos + 7) & (hmmdRxBufferSize - 1);
-                        const s32 distancePosH = (hmmdRxBufferReadPos + 8) & (hmmdRxBufferSize - 1);
-                        *outDistanceInCm       = static_cast<u16>(hmmdRxBuffer[distancePosL]) | (static_cast<u16>(hmmdRxBuffer[distancePosH]) << 8);
-
-                        // Move read position to the next frame
-                        hmmdRxBufferReadPos += hmmdFrameLength;
-
-                        return true;
+                        // We have a valid frame header but invalid frame tail?
+                        // Skip this full frame and continue searching for the next frame header
+                        hmmdRxBufferReadPos = (hmmdRxBufferReadPos + hmmdFrameLength) & hmmdRxBufferSizeMask;
                     }
                 }
 
@@ -158,7 +148,8 @@ namespace ncore
             return false;
         }
 
-        bool readHMMD(u8* outDetection, u16* outDistanceInCm)
+        // Read data from the HMMD sensor in 'normal' mode
+        bool readHMMD(s8* outDetection, u16* outDistanceInCm)
         {
             char line[128];
             g_memset(line, 0, sizeof(line));
@@ -188,7 +179,7 @@ namespace ncore
 
                 // Check if the line contains the "Range" information
                 lineLength = static_cast<s32>(end - begin);
-                str_t str = str_const_n(begin, lineLength);
+                str_t str  = str_const_n(begin, lineLength);
                 if (lineLength > 6 && str_cmp_n(str, "Range ", 6) == 0)
                 {
                     str.m_str += 6;
@@ -207,4 +198,3 @@ namespace ncore
         }
     }  // namespace nsensors
 }  // namespace ncore
-
