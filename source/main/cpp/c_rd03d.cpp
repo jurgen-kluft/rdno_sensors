@@ -1266,7 +1266,7 @@ namespace ncore
                     }
                 }
 
-                return any_target_detected
+                return any_target_detected;
             }
 
             module_t gModule;
