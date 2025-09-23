@@ -910,7 +910,7 @@ namespace ncore
 
                         // TODO actually the verification has already been done when receiving, we
                         //      should not really have to verify again!
-#ifdef RD03D_DEBUG
+#    ifdef RD03D_DEBUG
                         const int report_len = 8 * RD03D_MAX_TARGETS;
                         if (data->rx_data_len != sizeof(RD03D_REPORT_HEAD) + report_len + sizeof(RD03D_REPORT_TAIL))
                         {
@@ -929,7 +929,7 @@ namespace ncore
                             LOG_ERR("Invalid report frame, tail mismatch");
                             return -EINVAL;
                         }
-#endif
+#    endif
                         // Decode the response
                         // RD03D_REPORT_HEAD
                         //   Target 1 { x, y, speed, distance }
@@ -1150,9 +1150,10 @@ namespace ncore
                 void begin(u8 rxPin, u8 txPin, nbaud::Enum baud);
                 bool update();
 
-                target_t       m_target;  // single target
-                u8             m_buffer[30];
-                u32            m_index;
+                target_t m_target[3];
+                bool     m_detected[3];
+                u8       m_buffer[30];
+                u32      m_index;
 
                 bool parseData(const u8 *buffer, u32 len);
             };
@@ -1168,10 +1169,7 @@ namespace ncore
 
             module_t::module_t() {}
 
-            void module_t::begin(u8 rxPin, u8 txPin, nbaud::Enum baud)
-            {
-                nserial1::begin(baud, nconfig::MODE_8N1, rxPin, txPin);
-            }
+            void module_t::begin(u8 rxPin, u8 txPin, nbaud::Enum baud) { nserial1::begin(baud, nconfig::MODE_8N1, rxPin, txPin); }
 
             // Parser state-machine for UART data
             bool module_t::update()
@@ -1211,7 +1209,7 @@ namespace ncore
                             if (byteIn == 0x00)
                             {
                                 m_index = 0;
-                                state = RECEIVE_FRAME;
+                                state   = RECEIVE_FRAME;
                             }
                             else
                                 state = WAIT_AA;
@@ -1225,7 +1223,7 @@ namespace ncore
                                 {
                                     data_updated = parseData(m_buffer, 24);
                                 }
-                                state = WAIT_AA;
+                                state   = WAIT_AA;
                                 m_index = 0;
                             }
                             break;
@@ -1239,41 +1237,48 @@ namespace ncore
                 if (len != 24)
                     return false;
 
-                // Only parse first 8 bytes for the first target
-                int16_t  raw_x          = buf[0] | (buf[1] << 8);
-                int16_t  raw_y          = buf[2] | (buf[3] << 8);
-                int16_t  raw_speed      = buf[4] | (buf[5] << 8);
-                uint16_t raw_pixel_dist = buf[6] | (buf[7] << 8);
-
-                m_target.detected = !(raw_x == 0 && raw_y == 0 && raw_speed == 0 && raw_pixel_dist == 0);
-
-                // correctly parse signed valuss
-                m_target.x     = ((raw_x & 0x8000) ? 1 : -1) * (raw_x & 0x7FFF);
-                m_target.y     = ((raw_y & 0x8000) ? 1 : -1) * (raw_y & 0x7FFF);
-                m_target.speed = ((raw_speed & 0x8000) ? 1 : -1) * (raw_speed & 0x7FFF);
-
-                if (m_target.detected)
+                bool any_target_detected = false;
+                for (s16 i = 0; i < 3; i++, buf += 8)
                 {
-                    m_target.distance = sqrt(m_target.x * m_target.x + m_target.y * m_target.y);
+                    const int16_t  raw_x = (int16_t)buf[0] | ((int16_t)buf[1] << 8);  // x coordinate
+                    const int16_t  raw_y = (int16_t)buf[2] | ((int16_t)buf[3] << 8);  // y coordinate
+                    const int16_t  raw_v = (int16_t)buf[4] | ((int16_t)buf[5] << 8);  // v speed
+                    const uint16_t raw_s = (int16_t)buf[6] | ((int16_t)buf[7] << 8);  // s distance
 
-                    // angle calculation (convert radians to degrees, then flip)
-                    float angleRad = atan2(m_target.y, m_target.x) - (PI / 2.0f);
-                    float angleDeg = angleRad * (180.0f / PI);
-                    m_target.angle   = (s16)-angleDeg;  // align angle with x measurement positive / negative sign
-                }
-                else
-                {
-                    m_target.distance = 0;
-                    m_target.angle    = 0;
+                    m_detected[i] = !(raw_x == 0 && raw_y == 0 && raw_v == 0 && raw_s == 0);
+                    if (m_detected[i])
+                    {
+                        target_t &t         = m_target[i];
+                        t.x                 = ((raw_x & 0x8000) ? 1 : -1) * (raw_x & 0x7FFF);
+                        t.y                 = ((raw_y & 0x8000) ? 1 : -1) * (raw_y & 0x7FFF);
+                        t.speed             = ((raw_v & 0x8000) ? 1 : -1) * (raw_v & 0x7FFF);
+                        t.distance          = sqrt(t.x * t.x + t.y * t.y);
+                        
+                        any_target_detected = true;
+                    }
+                    else
+                    {
+                        target_t &t = m_target[i];
+                        t.x         = 0;
+                        t.y         = 0;
+                        t.speed     = 0;
+                        t.distance  = 0;
+                    }
                 }
 
-                return true;
+                return any_target_detected
             }
 
             module_t gModule;
             void     begin(u8 rxPin, u8 txPin) { gModule.begin(rxPin, txPin, nbaud::Rate256000); }
             bool     update() { return gModule.update(); }
-            target_t getTarget() { return gModule.m_target; }
+            bool     getTarget(s8 i, target_t &t)
+            {
+                if (i < 0 || i >= 3)
+                    return false;
+                t = gModule.m_target[i];
+                return gModule.m_detected[i];
+            }
 
         }  // namespace nrd03d
     }  // namespace nsensors
