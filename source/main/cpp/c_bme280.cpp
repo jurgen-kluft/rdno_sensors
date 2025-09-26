@@ -595,15 +595,13 @@ namespace ncore
 {
     namespace nsensors
     {
-        nbme280::Bme280ReadWriteI2CRegister* gReadWriteRegister = nullptr;
         nbme280::BME280*                     gBme280            = nullptr;
 
         bool initBME280(u8 i2c_address)
         {
-           gReadWriteRegister = nsystem::construct<nbme280::Bme280ReadWriteI2CRegister>(i2c_address);
             nbme280::Settings settings;
-            gBme280 = allocator->construct<nbme280::BME280>(settings);
-            while (!gBme280->begin(gReadWriteRegister))
+            gBme280 = nsystem::construct<nbme280::BME280>(settings);
+            while (!gBme280->begin(nsystem::construct<nbme280::Bme280ReadWriteI2CRegister>(i2c_address)))
             {
                 Serial.println("BME280 init failed, retrying...");
                 delay(1000);
