@@ -1248,12 +1248,12 @@ namespace ncore
                     m_detected[i] = !(raw_x == 0 && raw_y == 0 && raw_v == 0 && raw_s == 0);
                     if (m_detected[i])
                     {
-                        target_t &t         = m_target[i];
-                        t.x                 = ((raw_x & 0x8000) ? 1 : -1) * (raw_x & 0x7FFF);
-                        t.y                 = ((raw_y & 0x8000) ? 1 : -1) * (raw_y & 0x7FFF);
-                        t.speed             = ((raw_v & 0x8000) ? 1 : -1) * (raw_v & 0x7FFF);
-                        t.distance          = sqrt(t.x * t.x + t.y * t.y);
-                        
+                        target_t &t = m_target[i];
+                        t.x         = ((raw_x & 0x8000) ? 1 : -1) * (raw_x & 0x7FFF);
+                        t.y         = ((raw_y & 0x8000) ? 1 : -1) * (raw_y & 0x7FFF);
+                        t.v         = ((raw_v & 0x8000) ? 1 : -1) * (raw_v & 0x7FFF);
+                        t.s         = sqrt(t.x * t.x + t.y * t.y);
+
                         any_target_detected = true;
                     }
                     else
@@ -1261,8 +1261,8 @@ namespace ncore
                         target_t &t = m_target[i];
                         t.x         = 0;
                         t.y         = 0;
-                        t.speed     = 0;
-                        t.distance  = 0;
+                        t.v         = 0;
+                        t.s         = 0;
                     }
                 }
 
@@ -1296,12 +1296,10 @@ namespace ncore
             target_t getTarget()
             {
                 target_t t;
-                t.distance = 0;
-                t.angle    = 0;
-                t.speed    = 0;
-                t.x        = 0;
-                t.y        = 0;
-                t.detected = false;
+                t.s = 0;
+                t.v = 0;
+                t.x = 0;
+                t.y = 0;
                 return t;
             }
 

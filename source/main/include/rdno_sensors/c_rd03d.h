@@ -13,10 +13,10 @@ namespace ncore
         {
             struct target_t
             {
-                u16  distance;  // Distance in mm, 0 means target is invalid
-                s16  speed;     // Speed of the target in cm/s
-                s16  x;         // X coordinate in mm
-                s16  y;         // Y coordinate in mm
+                u16 s;  // Distance in mm, 0 means target is invalid
+                s16 v;  // Speed of the target in cm/s
+                s16 x;  // X coordinate in mm
+                s16 y;  // Y coordinate in mm
             };
 
             void begin(u8 rxPin, u8 txPin);
