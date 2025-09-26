@@ -589,7 +589,7 @@ namespace nbme280
 }  // namespace nbme280
 
 #    include "rdno_sensors/c_bme280.h"
-#    include "rdno_core/c_allocator.h"
+#    include "rdno_core/c_malloc.h"
 
 namespace ncore
 {
@@ -598,9 +598,9 @@ namespace ncore
         nbme280::Bme280ReadWriteI2CRegister* gReadWriteRegister = nullptr;
         nbme280::BME280*                     gBme280            = nullptr;
 
-        bool initBME280(alloc_t* allocator, u8 i2c_address)
+        bool initBME280(u8 i2c_address)
         {
-            gReadWriteRegister = allocator->construct<nbme280::Bme280ReadWriteI2CRegister>(i2c_address);
+           gReadWriteRegister = nsystem::construct<nbme280::Bme280ReadWriteI2CRegister>(i2c_address);
             nbme280::Settings settings;
             gBme280 = allocator->construct<nbme280::BME280>(settings);
             while (!gBme280->begin(gReadWriteRegister))
@@ -661,7 +661,7 @@ namespace ncore
 {
     namespace nsensors
     {
-        bool initBME280(alloc_t* allocator, u8 i2c_address) { return true; }
+        bool initBME280(u8 i2c_address) { return true; }
 
         void updateBME280(f32& outPressure, f32& outTemperature, f32& outHumidity)
         {

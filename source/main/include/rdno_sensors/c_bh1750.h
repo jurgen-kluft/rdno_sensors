@@ -11,7 +11,7 @@ namespace ncore
 
     namespace nsensors
     {
-        bool initBH1750(alloc_t* allocator, u8 i2c_address = 0x23);
+        bool initBH1750(u8 i2c_address = 0x23);
 
         // outLuxValue = light intensity in lux
         bool updateBH1750(u16& outLuxValue);

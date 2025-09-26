@@ -11,7 +11,7 @@ namespace ncore
 
     namespace nsensors
     {
-        bool initBME280(alloc_t* allocator, u8 i2c_address= 0x76);
+        bool initBME280(u8 i2c_address= 0x76);
 
         // Pressure in hPa
         // Temperature in °C

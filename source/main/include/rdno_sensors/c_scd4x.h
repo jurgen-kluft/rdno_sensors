@@ -7,11 +7,9 @@
 
 namespace ncore
 {
-    class alloc_t;
-
     namespace nsensors
     {
-        bool initSCD41(alloc_t* allocator);
+        bool initSCD41();
 
         // outHumidity: relative humidity in percent
         // outTemperature: temperature in degrees Celsius

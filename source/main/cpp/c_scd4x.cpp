@@ -2511,7 +2511,7 @@ namespace nscd4x
 }  // namespace nscd4x
 
 #    include "rdno_sensors/c_scd4x.h"
-#    include "rdno_core/c_allocator.h"
+#    include "rdno_core/c_malloc.h"
 
 namespace ncore
 {
@@ -2519,11 +2519,11 @@ namespace ncore
     {
         nscd4x::SensirionI2cScd4x *scd4x = nullptr;
 
-        bool initSCD41(alloc_t *allocator)
+        bool initSCD41()
         {
             if (scd4x == nullptr)
             {
-                scd4x = allocator->construct<nscd4x::SensirionI2cScd4x>();
+                scd4x = nsystem::construct<nscd4x::SensirionI2cScd4x>();
                 if (scd4x != nullptr)
                 {
                     scd4x->begin(Wire);

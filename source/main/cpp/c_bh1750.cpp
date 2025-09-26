@@ -1,5 +1,5 @@
 #include "rdno_sensors/c_bh1750.h"
-#include "rdno_core/c_allocator.h"
+#include "rdno_core/c_malloc.h"
 
 #ifdef TARGET_ESP32
 
@@ -351,11 +351,11 @@ namespace ncore
         bool             bh1750_active = false;
         u16              bh1750_lux    = 0;
 
-        bool initBH1750(alloc_t* allocator, u8 i2c_address)
+        bool initBH1750(u8 i2c_address)
         {
             if (bh1750 == nullptr)
             {
-                bh1750 = allocator->construct<nbh1750::BH1750>();
+                bh1750 = nsystem::construct<nbh1750::BH1750>();
                 bh1750->initialize(i2c_address);
                 bh1750_active = bh1750->begin();
             }
@@ -412,11 +412,11 @@ namespace ncore
 
         Bh1750Sensor* bh1750 = nullptr;
 
-        bool initBH1750(alloc_t* allocator, u8 i2c_address)
+        bool initBH1750(u8 i2c_address)
         {
             if (bh1750 == nullptr)
             {
-                bh1750 = allocator->construct<Bh1750Sensor>();
+                bh1750 = nsystem::construct<Bh1750Sensor>();
                 return true;
             }
             return false;
