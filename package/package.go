@@ -33,17 +33,17 @@ func GetPackage() *denv.Package {
 
 	// main library
 	mainlib := denv.SetupCppLibProject(mainpkg, name)
-	mainlib.AddDependencies(corepkg.GetMainLib()...)
-	mainlib.AddDependencies(wirepkg.GetMainLib()...)
+	mainlib.AddDependencies(corepkg.GetMainLib())
+	mainlib.AddDependencies(wirepkg.GetMainLib())
 
 	// test library
 	testlib := denv.SetupCppTestLibProject(mainpkg, name)
-	testlib.AddDependencies(corepkg.GetTestLib()...)
-	testlib.AddDependencies(wirepkg.GetTestLib()...)
+	testlib.AddDependencies(corepkg.GetTestLib())
+	testlib.AddDependencies(wirepkg.GetTestLib())
 
 	// unittest project
 	maintest := denv.SetupCppTestProject(mainpkg, name)
-	maintest.AddDependencies(cunittestpkg.GetMainLib()...)
+	maintest.AddDependencies(cunittestpkg.GetMainLib())
 	maintest.AddDependency(testlib)
 
 	mainpkg.AddMainLib(mainlib)
