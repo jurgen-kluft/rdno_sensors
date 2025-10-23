@@ -3,7 +3,7 @@
 #include "rdno_core/c_timer.h"
 #include "rdno_core/c_serial.h"
 
-#ifdef TARGET_ESP32
+#ifdef TARGET_ARDUINO
 #    include "Arduino.h"
 #    include "Wire.h"
 #endif
@@ -1135,7 +1135,7 @@ namespace ncore
 
 #endif  // 0
 
-#ifdef TARGET_ESP32
+#ifdef TARGET_ARDUINO
 
 namespace ncore
 {

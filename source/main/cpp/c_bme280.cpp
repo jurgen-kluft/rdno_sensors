@@ -1,4 +1,4 @@
-#ifdef TARGET_ESP32
+#ifdef TARGET_ARDUINO
 
 #    include "Arduino.h"
 #    include "Wire.h"

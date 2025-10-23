@@ -1,4 +1,4 @@
-#ifdef TARGET_ESP32
+#ifdef TARGET_ARDUINO
 
 // Note: There is a lot of code here, the only realy dependency on Arduino is the
 //       Wire object, this is used to communicate with the sensor.
