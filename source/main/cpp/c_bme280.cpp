@@ -165,10 +165,10 @@ namespace nbme280
     public:
         // Constructor used to create the class.
         // All parameters have default values.
-        BME280(const Settings& settings);
+        BME280();
 
         // Method used to initialize the class.
-        bool begin(IReadWriteRegister* readWrite);
+        bool begin(const Settings* settings, IReadWriteRegister* readWrite);
 
         // Read the temperature from the BME280 and return a float.
         float temp(TempUnit unit = TempUnit_Celsius);
@@ -184,7 +184,7 @@ namespace nbme280
 
         // Write configuration to BME280, return true if successful.
         // Must be called from any child classes.
-        virtual bool Initialize();
+        bool Initialize(const Settings* settings);
 
         // Force a unfiltered measurement to populate the filter
         // buffer.
@@ -231,15 +231,18 @@ namespace nbme280
         float CalculatePressure(int32_t raw, int32_t t_fine, PresUnit unit = PresUnit_hPa);
     };
 
-    BME280::BME280(const Settings& settings)
-        : m_settings(settings)
+    BME280::BME280()
+        : m_settings()
         , m_initialized(false)
     {
     }
 
-    bool BME280::Initialize()
+    bool BME280::Initialize(const Settings* settings)
     {
         bool success(true);
+
+        if (settings != nullptr)
+            m_settings = *settings;
 
         success &= ReadChipID();
 
@@ -308,14 +311,10 @@ namespace nbme280
         WriteSettings();
     }
 
-    bool BME280::begin(IReadWriteRegister* readWrite)
+    bool BME280::begin(const Settings* settings, IReadWriteRegister* readWrite)
     {
         m_readWriteReg = readWrite;
-
-        bool success = Initialize();
-        success &= m_initialized;
-
-        return success;
+        return Initialize(settings);
     }
 
     void BME280::CalculateRegisters(uint8_t& ctrlHum, uint8_t& ctrlMeas, uint8_t& config)
@@ -547,8 +546,8 @@ namespace nbme280
     class Bme280ReadWriteI2CRegister : public IReadWriteRegister
     {
     public:
-        Bme280ReadWriteI2CRegister(uint8_t bme280Addr = 0x76)
-            : m_bme280Addr(bme280Addr)
+        Bme280ReadWriteI2CRegister()
+            : m_bme280Addr(0)
         {
         }
 
@@ -595,19 +594,19 @@ namespace ncore
 {
     namespace nsensors
     {
-        nbme280::BME280*                     gBme280            = nullptr;
+        nbme280::BME280 gBme280;
+        nbme280::Bme280ReadWriteI2CRegister gBme280Rw;
 
         bool initBME280(u8 i2c_address)
         {
-            nbme280::Settings settings;
-            gBme280 = nsystem::construct<nbme280::BME280>(settings);
-            while (!gBme280->begin(nsystem::construct<nbme280::Bme280ReadWriteI2CRegister>(i2c_address)))
+            gBme280Rw.m_bme280Addr = i2c_address;
+            while (!gBme280.begin(nullptr, &gBme280Rw))
             {
                 Serial.println("BME280 init failed, retrying...");
                 delay(1000);
             }
 
-            switch (gBme280->m_chip_model)
+            switch (gBme280.m_chip_model)
             {
                 case nbme280::ChipModel_BME280: Serial.println("Found BME280 sensor! "); break;
                 case nbme280::ChipModel_BMP280: Serial.println("Found BMP280 sensor! "); break;
@@ -618,7 +617,7 @@ namespace ncore
 
         bool updateBME280(f32& outPressure, f32& outTemperature, f32& outHumidity)
         {
-            if (gBme280 == nullptr || !gBme280->read(outPressure, outTemperature, outHumidity))
+            if (!gBme280.read(outPressure, outTemperature, outHumidity))
             {
                 outPressure    = 0;
                 outTemperature = -100.0f;
@@ -633,7 +632,7 @@ namespace ncore
             f32 outPressureF;
             f32 outTemperatureF;
             f32 outHumidityF;
-            if (gBme280 == nullptr || !gBme280->read(outPressureF, outTemperatureF, outHumidityF))
+            if (!gBme280.read(outPressureF, outTemperatureF, outHumidityF))
             {
                 outPressure    = 0;
                 outTemperature = -100;
