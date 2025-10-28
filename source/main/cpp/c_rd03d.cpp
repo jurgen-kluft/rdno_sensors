@@ -1150,10 +1150,10 @@ namespace ncore
                 void begin(u8 rxPin, u8 txPin, nbaud::Enum baud);
                 bool update();
 
+                u32      m_index;
                 target_t m_target[3];
                 bool     m_detected[3];
                 u8       m_buffer[30];
-                u32      m_index;
 
                 bool parseData(const u8 *buffer, u32 len);
             };
@@ -1169,7 +1169,19 @@ namespace ncore
 
             module_t::module_t() {}
 
-            void module_t::begin(u8 rxPin, u8 txPin, nbaud::Enum baud) { nserial1::begin(baud, nconfig::MODE_8N1, rxPin, txPin); }
+            void module_t::begin(u8 rxPin, u8 txPin, nbaud::Enum baud) 
+            { 
+                nserial1::begin(baud, nconfig::MODE_8N1, rxPin, txPin); 
+
+                m_index = 0;
+                for (s8 i = 0; i < 3; i++)
+                {
+                    m_target[i].x = 0;
+                    m_target[i].y = 0;
+                    m_target[i].v = 0;
+                    m_detected[i] = false;
+                }
+            }
 
             // Parser state-machine for UART data
             bool module_t::update()
@@ -1237,24 +1249,23 @@ namespace ncore
                 if (len != 24)
                     return false;
 
-                bool any_target_detected = false;
                 for (s16 i = 0; i < 3; i++, buf += 8)
                 {
-                    const int16_t  raw_x = (int16_t)buf[0] | ((int16_t)buf[1] << 8);  // x coordinate
-                    const int16_t  raw_y = (int16_t)buf[2] | ((int16_t)buf[3] << 8);  // y coordinate
-                    const int16_t  raw_v = (int16_t)buf[4] | ((int16_t)buf[5] << 8);  // v speed
-                    const uint16_t raw_s = (int16_t)buf[6] | ((int16_t)buf[7] << 8);  // s distance
+                    const uint16_t raw_x = ((uint16_t)buf[0] | ((uint16_t)buf[1] << 8));  // x coordinate (left/right)
+                    const uint16_t raw_y = ((uint16_t)buf[2] | ((uint16_t)buf[3] << 8));  // y coordinate (depth/distance)
+                    const uint16_t raw_v = ((uint16_t)buf[4] | ((uint16_t)buf[5] << 8));  // v speed
+                    const uint16_t raw_s = ((uint16_t)buf[6] | ((uint16_t)buf[7] << 8));  // s distance unit (fixed value, 360 mm)
 
                     m_detected[i] = !(raw_x == 0 && raw_y == 0 && raw_v == 0 && raw_s == 0);
                     if (m_detected[i])
                     {
                         target_t &t = m_target[i];
-                        t.x         = ((raw_x & 0x8000) ? 1 : -1) * (raw_x & 0x7FFF);
-                        t.y         = ((raw_y & 0x8000) ? 1 : -1) * (raw_y & 0x7FFF);
-                        t.v         = ((raw_v & 0x8000) ? 1 : -1) * (raw_v & 0x7FFF);
-                        t.s         = sqrt(t.x * t.x + t.y * t.y);
+                        t.x         = (raw_x & 0x8000) ? (raw_x & 0x7FFF) : -1 * (raw_x & 0x7FFF);  // mm
+                        t.y         = (raw_y & 0x8000) ? (raw_y & 0x7FFF) : -1 * (raw_y & 0x7FFF);  // mm
+                        t.v         = (raw_v & 0x8000) ? (raw_v & 0x7FFF) : -1 * (raw_v & 0x7FFF);  // cm/s
 
-                        any_target_detected = true;
+                        t.x = t.x / 10;  // convert to cm
+                        t.y = t.y / 10;  // convert to cm
                     }
                     else
                     {
@@ -1262,11 +1273,10 @@ namespace ncore
                         t.x         = 0;
                         t.y         = 0;
                         t.v         = 0;
-                        t.s         = 0;
                     }
                 }
 
-                return any_target_detected;
+                return true;
             }
 
             module_t gModule;
