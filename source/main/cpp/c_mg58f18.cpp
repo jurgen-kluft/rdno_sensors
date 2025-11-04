@@ -105,7 +105,7 @@ namespace ncore
                 return false;
             }
 
-            inline u32 cmd_read_value(const byte* response)
+            inline u32 cmd_decode_value(const byte* response)
             {
                 return (static_cast<u32>(response[2]) << 16) | (static_cast<u32>(response[3]) << 8) | static_cast<u32>(response[4]);
             }
@@ -139,13 +139,15 @@ namespace ncore
                     ntimer::delay(10);
                 }
 
+                outValue = 0xFFFFFFFF;        // Invalid value
                 if (Serial.available() >= 7)  // Read response
                 {
                     byte response[7];
                     Serial.readBytes(response, sizeof(response));
                     if (cmd_valid_response(response, cmd))
                     {
-                        return cmd_read_value(response);
+                        outValue = cmd_decode_value(response);
+                        return true;
                     }
                 }
                 return false;
