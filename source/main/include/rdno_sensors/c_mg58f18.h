@@ -12,7 +12,7 @@ namespace ncore
         namespace nmg58f18
         {
             bool initialize(s8 rx, s8 tx);  // UART pins
-            bool is_detecting(s8 pin);         // The 'out' pin of the sensor board attached to this pin will go HIGH when motion is detected
+            bool is_detecting(s8 pin);      // The 'out' pin of the sensor board attached to this pin will go HIGH when motion is detected
 
             enum EState
             {
