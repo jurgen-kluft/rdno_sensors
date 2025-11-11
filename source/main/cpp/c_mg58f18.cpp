@@ -61,24 +61,22 @@ namespace ncore
                 CMD_SAVE_SETTINGS_PARAMETERS         = 0x20   // Save the settings parameters (0x01) (Note: 100ms later you will receive the response frame)
             };
 
-            bool initialize(s8 rx, s8 tx)
+            ngpio::input_pin_t motion_sensor_pin(12);
+            bool               initialize(s8 rx, s8 tx, s8 motion_detected_input_pin)
             {
-                if (rx >= 0 && tx >= 0)
+                if (rx >= 0 && tx >= 0 && motion_detected_input_pin >= 0)
                 {
+                    motion_sensor_pin = ngpio::input_pin_t(motion_detected_input_pin);
                     nserial1::begin(nbaud::Rate9600, nconfig::MODE_8N1, rx, tx);
+                    // Allow time for the Serial port to initialize
+                    ntimer::delay(100);
+                    return true;
                 }
-                else
-                {
-                    return false;
-                }
-
-                // Allow time for the Serial port to initialize
-                ntimer::delay(100);
-                return true;
+                return false;
             }
 
             // The 'out' pin of the sensor board attached to this pin will go HIGH when motion is detected
-            bool is_detecting(s8 pin) { return ngpio::read_digital(pin); }
+            bool is_detecting(s8 pin) { return motion_sensor_pin.is_high(); }
 
             // clang-format off
             inline void cmd_encoder(u8 cmd, u32 value, byte* outCommand)

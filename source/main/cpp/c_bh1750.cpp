@@ -401,22 +401,21 @@ namespace ncore
         struct Bh1750Sensor
         {
             Bh1750Sensor()
-                : m_Lux(42)
+                : m_Initialized(false)
+                , m_Lux(42)
             {
             }
-
-            DCORE_CLASS_PLACEMENT_NEW_DELETE
-
+            bool m_Initialized;
             s32 m_Lux;
         };
 
-        Bh1750Sensor* bh1750 = nullptr;
+        Bh1750Sensor bh1750;
 
         bool initBH1750(u8 i2c_address)
         {
-            if (bh1750 == nullptr)
+            if (bh1750.m_Initialized == false)
             {
-                bh1750 = nsystem::construct<Bh1750Sensor>();
+                bh1750.m_Initialized = true;
                 return true;
             }
             return false;
@@ -425,9 +424,9 @@ namespace ncore
         // Light in lux
         bool updateBH1750(s32& outLuxValue)
         {
-            if (bh1750 != nullptr)
+            if (bh1750.m_Initialized)
             {
-                outLuxValue = bh1750->m_Lux;
+                outLuxValue = bh1750.m_Lux;
                 return true;
             }
             outLuxValue = -1;

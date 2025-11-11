@@ -660,18 +660,20 @@ namespace ncore
     {
         bool initBME280(u8 i2c_address) { return true; }
 
-        void updateBME280(f32& outPressure, f32& outTemperature, f32& outHumidity)
+        bool updateBME280(f32& outPressure, f32& outTemperature, f32& outHumidity)
         {
             outPressure    = 1024.0f;
             outTemperature = 25.0f;
             outHumidity    = 49.f;
+            return true;
         }
 
-        void updateBME280(u16& outPressure, s8& outTemperature, u16& outHumidity)
+        bool updateBME280(u16& outPressure, s8& outTemperature, u16& outHumidity)
         {
             outPressure    = 1024;
             outTemperature = 25;
             outHumidity    = 49;
+            return true;
         }
 
     }  // namespace nsensors

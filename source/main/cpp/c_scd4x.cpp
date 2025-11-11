@@ -2573,7 +2573,6 @@ namespace ncore
 #else
 
 #    include "rdno_sensors/c_scd4x.h"
-#    include "rdno_core/c_allocator.h"
 
 namespace ncore
 {
@@ -2583,7 +2582,7 @@ namespace ncore
 
         struct SensirionI2cScd4x
         {
-            DCORE_CLASS_PLACEMENT_NEW_DELETE
+            bool mInitialized = false;
 
             u16 readMeasurement(u16 &co2, float &temperature, float &humidity)
             {
@@ -2595,15 +2594,15 @@ namespace ncore
             }
         };
 
-        SensirionI2cScd4x *scd4x = nullptr;
+        SensirionI2cScd4x scd4x;
 
-        bool initSCD41(alloc_t *allocator, u8 i2c_address)
+        bool initSCD41()
         {
-            if (scd4x == nullptr)
+            if (scd4x.mInitialized == false)
             {
-                scd4x = allocator->construct<SensirionI2cScd4x>();
+                scd4x.mInitialized = true;
             }
-            return (scd4x != nullptr);
+            return scd4x.mInitialized;
         }
 
         // outHumidity: relative humidity in percent
@@ -2611,12 +2610,12 @@ namespace ncore
         // outCo2: CO2 concentration in ppm
         bool updateSCD41(f32 &outHumidity, f32 &outTemperature, u16 &outCo2)
         {
-            if (scd4x != nullptr)
+            if (scd4x.mInitialized)
             {
                 u16   co2;
                 float humidity;
                 float temperature;
-                u16   error = scd4x->readMeasurement(co2, temperature, humidity);
+                u16   error = scd4x.readMeasurement(co2, temperature, humidity);
                 if (error == NO_ERROR)
                 {
                     outHumidity    = humidity;

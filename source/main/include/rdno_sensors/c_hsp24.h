@@ -20,33 +20,35 @@ namespace ncore
             struct hsp24_t
             {
                 Stream* _serial;
-                Stream* _debugSerial;
                 u64     receiveStartTime;
                 s32     isInATMode;
-                
-                s32     serialBufferLen;
-                s32     serialBufferRead;
-                s32     serialBufferWrite;
-                char    serialBuffer[BUFFER_SIZE];
-                
-                byte    buffer_hsp24[BUFFER_SIZE];
-                s32     bufferIndex_hsp24;
+
+                s32  serialBufferLen;
+                s32  serialBufferRead;
+                s32  serialBufferWrite;
+                char serialBuffer[BUFFER_SIZE];
+
+                char buffer[BUFFER_SIZE];  // 将 buffer 定义为成员变量
+                s32  bufferIndex;
+
+                byte buffer_hsp24[BUFFER_SIZE];
+                s32  bufferIndex_hsp24;
             };
 
-            void begin(hsp24_t& sensor, Stream* serial, Stream* debugSerial = nullptr);
+            void begin(hsp24_t& sensor, Stream* serial);
 
             // Energy value for each moving distance gate
-            struct RadarMovePower
+            struct MovementEnergy
             {
                 void reset();
-                s32  moveGate[9];
+                u8   gate[9];
             };
 
-            // Energy value for each static distance gate
-            struct RadarStaticPower
+            // Energy value for each stationary distance gate
+            struct StationaryEnergy
             {
                 void reset();
-                s32  staticGate[9];
+                u8   gate[9];
             };
 
             // TargetStatus
@@ -56,33 +58,81 @@ namespace ncore
                 Error   = 0x01,
             };
 
+            enum ERadarMode
+            {
+                RadarMode_Engineering = 0x01,
+                RadarMode_Normal      = 0x02,
+            };
+
             enum ETargetStatus
             {
-                TargetStatusNone   = 0x00,
-                TargetStatusMoving = 0x01,
-                TargetStatusStatic = 0x02,
-                TargetStatusBoth = 0x03 TargetStatusFrameError = 0x04
+                TargetStatusNone       = 0x00,
+                TargetStatusMoving     = 0x01,
+                TargetStatusStatic     = 0x02,
+                TargetStatusBoth       = 0x03,
+                TargetStatusFrameError = 0x04
             };
 
             struct RadarStatus
             {
-                ETargetStatus    targetStatus;       // Target status of the radar
-                s32              distance;           // Target distance of the radar, in mm
-                s32              moveSetDistance;    // Number of motion detection range gates for the radar, generally not required
-                s32              staticSetDistance;  // Number of stationary detection range gates for the radar, generally not required
-                s32              detectionDistance;  // Maximum detection range gate of the radar
-                s32              resolution;         // Range gate resolution of the radar
-                s32              noTargetduration;   // Duration of unmanned operation
-                s32              radarMode;          // Used to distinguish whether the module is in basic reporting mode (2) or engineering reporting mode (1)
-                RadarMovePower   radarMovePower;     // Motion energy value
-                RadarStaticPower radarStaticPower;   // Stationary energy value
-                s32              photosensitive;     // Photosensitive value 0-255
+                ETargetStatus targetStatus;  // Target status of the radar
+                ERadarMode    radarMode;     // Reporting mode (2) or engineering reporting mode (1)
+                // ---- Basic Information ----
+                u16 movementTargetDistance;    // Distance to the moving target (cm)
+                u8  movementTargetEnergy;      // Energy of the moving target
+                u16 stationaryTargetDistance;  // Distance to the static target (cm)
+                u8  stationaryTargetEnergy;    // Energy of the static target
+                u16 detectionDistance;         // Maximum detection range gate of the radar (cm)
+                // ---- Engineering Information ----
+                u8               maximumMovementDistanceDoor;
+                u8               maximumRestingDistanceDoor;
+                MovementEnergy   movementDistanceGateEnergy;    // Movement energy value for each distance gate
+                StationaryEnergy stationaryDistanceGateEnergy;  // Stationary energy value for each distance gate
+                u8               photosensitive;                // Photosensitive value 0-255
             };
 
-            struct DataResult
+            struct RadarConfig
             {
-                byte* resultBuffer;
-                s32   length;
+                u8 maximumDistanceGate;
+                u8 maximumMotionDistanceGate;
+                u8 maximumRestDistanceGate;
+                u8 motionSensitivityPerDistanceGate[9];
+                u8 stationarySensitivityPerDistanceGate[9];
+            };
+
+            struct RadarMotionAndStationaryConfig
+            {
+                u32 maximumMotionDistanceGateValue;
+                u32 maximumRestDistanceGateValue;
+                u16 unoccupiedDurationValue;  // in seconds
+            };
+
+            struct RadarSensitityConfig
+            {
+                u8  distanceGate;       // Gate 0-8 (specify 0xFF to mean all gates)
+                u32 motionSensitivity;  // Motion sensitivity value for the specified gate
+                u32 restSensitivity     // Rest sensitivity value for the specified gate
+            };
+
+            enum EResult
+            {
+                Success = 0,
+                Fail    = 1,
+                Timeout = 2,
+            };
+
+            enum EDistanceResolution
+            {
+                DistanceResolution_20cm = 0x01,
+                DistanceResolution_75cm = 0x00,
+            };
+
+            struct FirmwareVersion
+            {
+                u16  type;                                    // 0x0001
+                u16  major;                                   // 0x0107 = v1.07.22091516
+                u32  minor;                                   // 0x22091516 = 22091516
+                void toString(char* outStr, s32 outStrSize);  // Output format: "v1.07.22091516"
             };
 
             s32 enterATMode(hsp24_t& sensor);
@@ -90,20 +140,22 @@ namespace ncore
             s32 getVersion(hsp24_t& sensor);
             s32 setNetwork(hsp24_t& sensor, const char* ssid, const char* password);
 
-            RadarStatus getStatus(hsp24_t& sensor);
-            DataResult  sendCommand(hsp24_t& sensor, const byte* sendData, s32 sendDataLength);
-            AskStatus   enableConfigMode(hsp24_t& sensor);
-            AskStatus   disableConfigMode(hsp24_t& sensor);
-            s32         getVersion(hsp24_t& sensor, char* outString, s32 maxLength);  // A version string is always <= 32 bytes
-            AskStatus   setDetectionDistance(hsp24_t& sensor, s32 distance, s32 times);
-            AskStatus   setGatePower(hsp24_t& sensor, s32 gate, s32 movePower, s32 staticPower);
-            RadarStatus getConfig(hsp24_t& sensor);
-            AskStatus   setResolution(hsp24_t& sensor, s32 resolution);
-            RadarStatus getResolution(hsp24_t& sensor);
-            AskStatus   rebootRadar(hsp24_t& sensor);
-            AskStatus   refactoryRadar(hsp24_t& sensor);
-            AskStatus   enableEngineeringModel(hsp24_t& sensor);
-            AskStatus   disableEngineeringModel(hsp24_t& sensor);
+            EResult getStatus(hsp24_t& sensor, RadarStatus& status);
+            EResult enableConfigMode(hsp24_t& sensor);
+            EResult disableConfigMode(hsp24_t& sensor);
+            EResult getConfig(hsp24_t& sensor, RadarConfig& config);
+            EResult getFirmwareVersion(hsp24_t& sensor, FirmwareVersion& version);
+            EResult setMode(hsp24_t& sensor, ERadarMode mode);
+            EResult setMaximumDistanceAndTiming(hsp24_t& sensor, RadarMotionAndStationaryConfig const& config);
+            EResult setDistanceGateSensitity(hsp24_t& sensor, RadarSensitityConfig const& config);
+            EResult setResolution(hsp24_t& sensor, EDistanceResolution resolution);
+            EResult getResolution(hsp24_t& sensor, EDistanceResolution& resolution);
+
+            EResult setBluetoothPassword(hsp24_t& sensor, const char password[6]);
+            EResult getBluetoothPassword(hsp24_t& sensor, char* password);
+
+            EResult rebootRadar(hsp24_t& sensor);
+            EResult restoreFactorySettings(hsp24_t& sensor);
 
         }  // namespace nseeed
     }  // namespace nsensors

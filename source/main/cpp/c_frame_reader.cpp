@@ -1,6 +1,7 @@
 #include "rdno_core/c_log.h"
 #include "rdno_core/c_timer.h"
 #include "rdno_core/c_serial.h"
+#include "ccore/c_memory.h"
 
 #include "rdno_sensors/c_frame_reader.h"
 
@@ -13,91 +14,140 @@ namespace ncore
 {
     namespace nserial
     {
-        void frame_reader_t::initialize(Stream *serial, u8 *buffer, s32 bufferCapacity, s32 maxFrameSize)
+        void frame_reader_t::initialize(Stream *serial, u8 *buffer, u16 bufferCapacity)
         {
             mSerial               = serial;
             mSerialBuffer         = buffer;
             mSerialBufferCapacity = bufferCapacity;
-            mMaxFrameSize         = maxFrameSize;
+            mMaxFrameSize         = 64;
             mSerialBufferWrite    = mSerialBuffer;
-            mCurrentFrameHeader   = nullptr;
-            mCurrentFrameCursor   = mSerialBuffer;
+            mSequenceCount        = 0;
+            mStartSequences       = nullptr;
+            mFrameData            = nullptr;
+            mEndSequences         = nullptr;
+            mFoundSequence        = -1;
+            mFoundFrame           = nullptr;
         }
 
-        bool frame_reader_t::read(frame_sequence_t const &header, frame_sequence_t const &tail, u8 *&outMessage, u32 &outMessageLen)
+        void frame_reader_t::set_frame_data(frame_sequence_t const *startSequences, frame_sequence_t const *endSequences, frame_data_t *frameData, s8 sequenceCount)
         {
-            if (mCurrentFrameHeader == nullptr)
+            mSequenceCount  = sequenceCount;
+            mStartSequences = startSequences;
+            mEndSequences   = endSequences;
+            mFrameData      = frameData;
+            mFoundSequence  = -1;
+            mFoundFrame     = nullptr;
+            mFrameData      = frameData;
+
+            for (u8 i = 0; i < mSequenceCount; ++i)
             {
-                // Move bytes to the front of the buffer since we haven't found a frame header yet
-                const s32 leftoverBytes = mSerialBufferWrite - mCurrentFrameCursor;
-                if (leftoverBytes > 0 && mCurrentFrameCursor > mSerialBuffer)
+                mFrameData[i].mStartPtr = mSerialBuffer;
+                mFrameData[i].mEndPtr   = nullptr;
+            }
+        }
+
+        bool find_sequence(frame_sequence_t const &sequence, u8 const *&readCursor, u8 const *cursorEnd)
+        {
+            while ((readCursor + sequence.mLength) <= cursorEnd)
+            {
+                u8 j = 0;
+                while (j < sequence.mLength)
                 {
-                    memmove(mSerialBuffer, mCurrentFrameCursor, leftoverBytes);
-                    mCurrentFrameCursor = mSerialBuffer;
-                    mSerialBufferWrite  = mSerialBuffer + leftoverBytes;
+                    if (readCursor[j] != sequence.mSequence[j])
+                        break;
+                    ++j;
                 }
+                if (j == sequence.mLength)
+                {
+                    return true;
+                }
+                readCursor += 1;
+            }
+            return false;
+        }
+
+        bool frame_reader_t::read(u8 const *&outFrameStart, u16 &outFrameLength, s8 &outSequenceIndex)
+        {
+            if (mFoundFrame != nullptr)
+            {
+                // Last read found a complete frame, so move any remaining data to the front of the buffer
+                const u16 remainingDataLen = (u16)(mSerialBufferWrite - mFoundFrame->mEndPtr);
+                g_memmove(mSerialBuffer, outFrameStart + outFrameLength, remainingDataLen);
+
+                // Update read/write pointer
+                mSerialBufferWrite = mSerialBuffer + remainingDataLen;
+
+                // Reset pointers for each sequence
+                for (u8 i = 0; i < mSequenceCount; ++i)
+                {
+                    mFrameData[i].mStartPtr = mSerialBuffer;
+                    mFrameData[i].mEndPtr   = nullptr;
+                }
+
+                // Reset
+                mFoundFrame = nullptr;
             }
 
             // Read available bytes into buffer using readBytes
             s32 available = mSerial->available();
-            if (available > 0 && mSerialBufferWrite < capacity())
+            if (available > 0 && (u16)(mSerialBufferWrite - mSerialBuffer) < mSerialBufferCapacity)
             {
-                const s32 spaceLeft = capacity() - mSerialBufferWrite;
+                const s32 spaceLeft = mSerialBufferCapacity - (u16)(mSerialBufferWrite - mSerialBuffer);
                 const s32 toRead    = (available < spaceLeft) ? available : spaceLeft;
-                mSerialBufferWrite += mSerial->readBytes(&serialBuffer[mSerialBufferWrite], toRead);
+                mSerialBufferWrite += mSerial->readBytes(mSerialBufferWrite, toRead);
             }
 
-            if (mCurrentFrameHeader == nullptr)
+            if (mFoundSequence == -1)
             {
-                // Search for frame header
-                while (mCurrentFrameCursor + header.mLength <= mSerialBufferWrite)
+                for (u8 i = 0; i < mSequenceCount; ++i)
                 {
-                    if (memcmp(mCurrentFrameCursor, header.mData, header.mLength) == 0)
+                    if (find_sequence(mStartSequences[i], mFrameData[i].mStartPtr, mSerialBufferWrite))
                     {
-                        mCurrentFrameHeader = mCurrentFrameCursor;
-                        mCurrentFrameCursor += header.mLength;
+                        mFrameData[i].mEndPtr = mFrameData[i].mStartPtr + mStartSequences[i].mLength;
+                        mFoundSequence        = i;
                         break;
                     }
-                    mCurrentFrameCursor++;
                 }
-                if (mCurrentFrameHeader == nullptr)
+                if (mFoundSequence == -1)
                 {
-                    // The last few bytes might be the start of a header, so we can't discard them
+                    // No start sequence found yet
                     return false;
                 }
             }
 
             // Guard for maximum frame size, e.g. we found a header but for some reason the end
             // of a frame never arrives and we keep accumulating data in the buffer.
-            if ((mSerialBufferWrite - mCurrentFrameHeader) > mMaxFrameSize)
+            if ((mSerialBufferWrite - mFrameData[mFoundSequence].mEndPtr) > mMaxFrameSize)
             {
                 // Discard current frame search
-                mCurrentFrameHeader = nullptr;
-                mCurrentFrameCursor = mSerialBufferWrite;
+                mFoundSequence     = -1;
+                mSerialBufferWrite = mSerialBuffer;
+                for (u8 i = 0; i < mSequenceCount; ++i)
+                {
+                    mFrameData[i].mStartPtr = mSerialBuffer;
+                    mFrameData[i].mEndPtr   = nullptr;
+                }
                 return false;
             }
 
             // Search for 'frame end'
-            uint8_t const *currentFrameEnd = nullptr;
-            while (mCurrentFrameCursor + tail.mLength <= mSerialBufferWrite)
+            if (!find_sequence(mEndSequences[mFoundSequence], mFrameData[mFoundSequence].mEndPtr, mSerialBufferWrite))
             {
-                if (memcmp(mCurrentFrameCursor, tail.mData, tail.mLength) == 0)
-                {
-                    currentFrameEnd = mCurrentFrameCursor + tail.mLength;
-                    break;
-                }
-                mCurrentFrameCursor++;
+                // No frame end found yet
+                return false;
             }
 
-            if (currentFrameEnd == nullptr)
-                return false;
+            // Frame end found, set found end pointer to after the end sequence
+            mFrameData[mFoundSequence].mEndPtr += mEndSequences[mFoundSequence].mLength;
 
             // Setup found message
-            outMessageLen = (uint32_t)(currentFrameEnd - mCurrentFrameHeader);
-            outMessage    = mCurrentFrameHeader;
+            mFoundFrame      = &mFrameData[mFoundSequence];
+            outFrameLength   = (u16)(mFoundFrame->mEndPtr - mFoundFrame->mStartPtr);
+            outFrameStart    = mFoundFrame->mStartPtr;
+            outSequenceIndex = mFoundSequence;
 
-            mCurrentFrameHeader = nullptr;
-            mCurrentFrameCursor = currentFrameEnd;
+            // Initialize to find the next sequence
+            mFoundSequence = -1;
 
             return true;
         }

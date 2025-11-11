@@ -1306,10 +1306,9 @@ namespace ncore
             target_t getTarget()
             {
                 target_t t;
-                t.s = 0;
-                t.v = 0;
                 t.x = 0;
                 t.y = 0;
+                t.v = 0;
                 return t;
             }
 

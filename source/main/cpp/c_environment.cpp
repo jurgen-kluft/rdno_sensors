@@ -46,7 +46,7 @@ namespace ncore
         bool valid_pressure(u16 pressure) { return (pressure > 300 && pressure < 1500); }
 
         bool valid_co2(u16 co2) { return (co2 > 0 && co2 < 10000); }
-        bool valid_lux(u16 lux) { return (lux < 100000); }
+        bool valid_lux(u16 lux) { return (lux < 0xFFFF); }
 
 #define hi_coeff1 -42.379f
 #define hi_coeff2 2.04901523f

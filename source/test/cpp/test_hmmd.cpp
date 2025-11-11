@@ -1,5 +1,4 @@
 #include "rdno_core/c_target.h"
-#include "rdno_core/c_allocator.h"
 #include "rdno_sensors/c_hmmd.h"
 
 #include "cunittest/cunittest.h"
@@ -19,7 +18,7 @@ UNITTEST_SUITE_BEGIN(hmmd)
 
         UNITTEST_TEST(test_1)
         {
-            u8  ok       = 0;
+            s8  ok       = 0;
             u16 distance = 0;
             nsensors::readHMMD(&ok, &distance);
         }
@@ -29,7 +28,7 @@ UNITTEST_SUITE_BEGIN(hmmd)
     {
         UNITTEST_TEST(test_1) 
 		{
-            u8  ok       = 0;
+            s8  ok       = 0;
             u16 distance = 0;
             CHECK_TRUE (nsensors::readHMMD2(&ok, &distance));
             {
