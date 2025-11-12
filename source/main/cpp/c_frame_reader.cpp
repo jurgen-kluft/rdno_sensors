@@ -19,7 +19,6 @@ namespace ncore
             mSerial               = serial;
             mSerialBuffer         = buffer;
             mSerialBufferCapacity = bufferCapacity;
-            mMaxFrameSize         = 64;
             mSerialBufferWrite    = mSerialBuffer;
             mSequenceCount        = 0;
             mStartSequences       = nullptr;
@@ -99,12 +98,12 @@ namespace ncore
                     state = 0;
                     for (u8 i = 0; i < mSequenceCount; ++i)
                     {
-                        frame_sequence_t const *sequence = mStartSequences[i];
-                        if ((mFrameData[i].mStartPtr + sequence->mLength) <= mSerialBufferWrite)
+                        frame_sequence_t const *startSequence = mStartSequences[i];
+                        if ((mFrameData[i].mStartPtr + startSequence->mLength) <= mSerialBufferWrite)
                         {
-                            if (match_sequence(sequence, mFrameData[i].mStartPtr))
+                            if (match_sequence(startSequence, mFrameData[i].mStartPtr))
                             {
-                                mFrameData[i].mEndPtr = mFrameData[i].mStartPtr + sequence->mLength;
+                                mFrameData[i].mEndPtr = mFrameData[i].mStartPtr + startSequence->mLength;
                                 mFoundSequence        = i;
                                 break;
                             }
@@ -119,7 +118,7 @@ namespace ncore
 
             // Guard for maximum frame size, e.g. we found a header but for some reason the end
             // of a frame never arrives and we keep accumulating data in the buffer.
-            if ((mSerialBufferWrite - mFrameData[mFoundSequence].mEndPtr) > mMaxFrameSize)
+            if ((mFrameData[mFoundSequence].mEndPtr - mFrameData[mFoundSequence].mStartPtr ) > mFrameData[mFoundSequence].mMaxFrameLen)
             {
                 // Discard current frame search
                 mFoundSequence     = -1;

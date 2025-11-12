@@ -24,7 +24,7 @@ namespace ncore
 
         struct frame_data_t
         {
-            frame_data_t(s16 minFrameLen = 8, s16 maxFrameLen = 8)
+            frame_data_t(s16 minFrameLen, s16 maxFrameLen)
                 : mStartPtr(nullptr)
                 , mEndPtr(nullptr)
                 , mMinFrameLen(minFrameLen)
@@ -44,7 +44,6 @@ namespace ncore
             u8                      *mSerialBuffer;          // Buffer where we are reading serial data into
             u16                      mSerialBufferCapacity;  // Capacity of the serial buffer
             u8                      *mSerialBufferWrite;     // Current write position in the serial buffer
-            u16                      mMaxFrameSize;          // Maximum allowed frame size
             u8                       mSequenceCount;         // Number of sequences configured
             frame_sequence_t const **mStartSequences;        // Array of possible start sequences
             frame_sequence_t const **mEndSequences;          // Array of possible end sequences (matching the order of start sequences)
@@ -57,7 +56,6 @@ namespace ncore
                 , mSerialBuffer(nullptr)
                 , mSerialBufferCapacity(0)
                 , mSerialBufferWrite(nullptr)
-                , mMaxFrameSize(0)
                 , mSequenceCount(0)
                 , mStartSequences(nullptr)
                 , mEndSequences(nullptr)

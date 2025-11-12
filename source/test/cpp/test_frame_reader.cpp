@@ -148,7 +148,13 @@ UNITTEST_SUITE_BEGIN(frame_reader)
             0xAA, 0xBB, 0xCC, 0xDD,  // frame A start
             0x51, 0x61, 0x71, 0x81,  // frame data
             0xF1, 0xF2, 0xF3, 0xF4,  // frame A end
-            0x88, 0x99};
+            0x88, 0x99,
+            0x88, 0x99, 0xAA, 
+            0xFA, 0xFB, 0xFC, 0xFD,  // frame B start
+            0x52, 0x62, 0x72, 0x82,  // frame data
+            0xF6, 0xF7, 0xF8, 0xF9,  // frame B end
+            0x88, 0x99, 0x00, 0x11, 
+            };
         // clang-format on
 
         UNITTEST_TEST(setup)
@@ -164,7 +170,7 @@ UNITTEST_SUITE_BEGIN(frame_reader)
             const frame_sequence_t startSeqB(frame_start_B, DARRAYSIZE(frame_start_B));
             const frame_sequence_t endSeqB(frame_end_B, DARRAYSIZE(frame_end_B));
 
-            u8        serialBuffer[128];
+            u8        serialBuffer[512];
             const u16 serialBufferSize = DARRAYSIZE(serialBuffer);
 
             frame_reader_t frameReader;
@@ -211,6 +217,17 @@ UNITTEST_SUITE_BEGIN(frame_reader)
             CHECK_EQUAL(0x61, outMessage[4 + 1]);
             CHECK_EQUAL(0x71, outMessage[4 + 2]);
             CHECK_EQUAL(0x81, outMessage[4 + 3]);
+
+            // Read fourth frame (B)
+            result = frameReader.read(outMessage, outMessageLen, outSequenceIndex);
+            CHECK_TRUE(result);
+            CHECK_NOT_NULL(outMessage);
+            CHECK_EQUAL(12, outMessageLen);
+            CHECK_EQUAL(1, outSequenceIndex);
+            CHECK_EQUAL(0x52, outMessage[4 + 0]);
+            CHECK_EQUAL(0x62, outMessage[4 + 1]);
+            CHECK_EQUAL(0x72, outMessage[4 + 2]);
+            CHECK_EQUAL(0x82, outMessage[4 + 3]);
         }
     }
 }
