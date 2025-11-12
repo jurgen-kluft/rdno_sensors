@@ -29,7 +29,7 @@ namespace ncore
             mFoundFrame           = nullptr;
         }
 
-        void frame_reader_t::set_frame_data(frame_sequence_t const *startSequences, frame_sequence_t const *endSequences, frame_data_t *frameData, s8 sequenceCount)
+        void frame_reader_t::set_frame_data(frame_sequence_t const **startSequences, frame_sequence_t const **endSequences, frame_data_t *frameData, s8 sequenceCount)
         {
             mSequenceCount  = sequenceCount;
             mStartSequences = startSequences;
@@ -46,31 +46,23 @@ namespace ncore
             }
         }
 
-        bool find_sequence(frame_sequence_t const &sequence, u8 const *&readCursor, u8 const *cursorEnd)
+        bool match_sequence(frame_sequence_t const *sequence, u8 const *readCursor)
         {
-            while ((readCursor + sequence.mLength) <= cursorEnd)
+            u8 j = 0;
+            while (j < sequence->mLength)
             {
-                u8 j = 0;
-                while (j < sequence.mLength)
-                {
-                    if (readCursor[j] != sequence.mSequence[j])
-                        break;
-                    ++j;
-                }
-                if (j == sequence.mLength)
-                {
-                    return true;
-                }
-                readCursor += 1;
+                if (readCursor[j] != sequence->mSequence[j])
+                    break;
+                ++j;
             }
-            return false;
+            return (j == sequence->mLength);
         }
 
         bool frame_reader_t::read(u8 const *&outFrameStart, u16 &outFrameLength, s8 &outSequenceIndex)
         {
             if (mFoundFrame != nullptr)
             {
-                // Last read found a complete frame, so move any remaining data to the front of the buffer
+                // Last call found a complete frame, so move any remaining data to the front of the buffer
                 const u16 remainingDataLen = (u16)(mSerialBufferWrite - mFoundFrame->mEndPtr);
                 g_memmove(mSerialBuffer, outFrameStart + outFrameLength, remainingDataLen);
 
@@ -99,20 +91,30 @@ namespace ncore
 
             if (mFoundSequence == -1)
             {
-                for (u8 i = 0; i < mSequenceCount; ++i)
+                // We step through the serial buffer one byte at a time looking for a start sequence since
+                // we could encounter any one of the configured sequences.
+                s8 state = 1;
+                while (state > 0 && mFoundSequence == -1)
                 {
-                    if (find_sequence(mStartSequences[i], mFrameData[i].mStartPtr, mSerialBufferWrite))
+                    state = 0;
+                    for (u8 i = 0; i < mSequenceCount; ++i)
                     {
-                        mFrameData[i].mEndPtr = mFrameData[i].mStartPtr + mStartSequences[i].mLength;
-                        mFoundSequence        = i;
-                        break;
+                        frame_sequence_t const *sequence = mStartSequences[i];
+                        if ((mFrameData[i].mStartPtr + sequence->mLength) <= mSerialBufferWrite)
+                        {
+                            if (match_sequence(sequence, mFrameData[i].mStartPtr))
+                            {
+                                mFrameData[i].mEndPtr = mFrameData[i].mStartPtr + sequence->mLength;
+                                mFoundSequence        = i;
+                                break;
+                            }
+                            mFrameData[i].mStartPtr += 1;
+                            state++;
+                        }
                     }
                 }
-                if (mFoundSequence == -1)
-                {
-                    // No start sequence found yet
+                if (mFoundSequence == -1)  // No start sequence found yet
                     return false;
-                }
             }
 
             // Guard for maximum frame size, e.g. we found a header but for some reason the end
@@ -130,15 +132,19 @@ namespace ncore
                 return false;
             }
 
-            // Search for 'frame end'
-            if (!find_sequence(mEndSequences[mFoundSequence], mFrameData[mFoundSequence].mEndPtr, mSerialBufferWrite))
+            // Search for 'end sequence' that matches the found start sequence
+            frame_sequence_t const *endSequence = mEndSequences[mFoundSequence];
+            while (true)
             {
-                // No frame end found yet
-                return false;
+                if ((mFrameData[mFoundSequence].mEndPtr + endSequence->mLength) > mSerialBufferWrite)
+                    return false;
+                if (match_sequence(endSequence, mFrameData[mFoundSequence].mEndPtr))
+                {  // End sequence found, set found end pointer to after the end sequence
+                    mFrameData[mFoundSequence].mEndPtr += endSequence->mLength;
+                    break;
+                }
+                mFrameData[mFoundSequence].mEndPtr += 1;
             }
-
-            // Frame end found, set found end pointer to after the end sequence
-            mFrameData[mFoundSequence].mEndPtr += mEndSequences[mFoundSequence].mLength;
 
             // Setup found message
             mFoundFrame      = &mFrameData[mFoundSequence];

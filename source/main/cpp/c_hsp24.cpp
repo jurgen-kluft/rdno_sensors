@@ -395,12 +395,12 @@ namespace ncore
 
             inline void ParseQueryDistanceResolutionAck(const u8 *buffer, u16 &resolutionIndex) { resolutionIndex = ReadUInt16LE(&buffer[10]); }
 
-            bool ParseRadarStatusAck(const u8 *msg, s32 msgLen, RadarStatus &status)
+            EResult ParseRadarStatusAck(const u8 *msg, s32 msgLen, RadarStatus &status)
             {
                 if (msg[7] != 0xAA)
                 {
                     status.targetStatus = TargetStatusFrameError;
-                    return false;
+                    return Fail;
                 }
 
                 status.radarMode    = (ERadarMode)msg[6];
@@ -440,6 +440,7 @@ namespace ncore
                     status.stationaryDistanceGateEnergy.reset();
                     status.photosensitive = 0xFF;
                 }
+                return Success;
             }
 
             // ---------------------------------------------------------------------------------------------------------------------------------
@@ -479,23 +480,22 @@ namespace ncore
                 status.photosensitive = 0xFF;
             }
 
-            void begin(hsp24_t &sensor, Stream *serial, Stream *debugSerial)
+            void begin(hsp24_t &sensor, Stream *serial)
             {
                 sensor._serial           = serial;
-                sensor._debugSerial      = debugSerial;
                 sensor.receiveStartTime  = 0;
                 sensor.bufferIndex       = 0;
                 sensor.isInATMode        = 0;
                 sensor.bufferIndex_hsp24 = 0;
             }
 
-            bool getStatus(hsp24_t &sensor, RadarStatus &status)
+            EResult getStatus(hsp24_t &sensor, RadarStatus &status)
             {
                 InitRadarStatus(status);
 
                 // Implementation to read and parse radar status goes here
 
-                return false;
+                return Success;
             }
 
         }  // namespace nseeed

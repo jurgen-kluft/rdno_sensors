@@ -51,13 +51,6 @@ namespace ncore
                 u8   gate[9];
             };
 
-            // TargetStatus
-            enum EStatus
-            {
-                Success = 0x00,
-                Error   = 0x01,
-            };
-
             enum ERadarMode
             {
                 RadarMode_Engineering = 0x01,
@@ -111,14 +104,14 @@ namespace ncore
             {
                 u8  distanceGate;       // Gate 0-8 (specify 0xFF to mean all gates)
                 u32 motionSensitivity;  // Motion sensitivity value for the specified gate
-                u32 restSensitivity     // Rest sensitivity value for the specified gate
+                u32 restSensitivity;     // Rest sensitivity value for the specified gate
             };
 
             enum EResult
             {
                 Success = 0,
-                Fail    = 1,
-                Timeout = 2,
+                Fail    = -1,
+                Timeout = -2,
             };
 
             enum EDistanceResolution
