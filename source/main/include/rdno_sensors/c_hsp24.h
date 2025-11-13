@@ -47,6 +47,11 @@ namespace ncore
                 TargetStatusFrameError = 0x04
             };
 
+            inline bool isTargetDetected(ETargetStatus status)
+            {
+                return (status == TargetStatusMoving) || (status == TargetStatusStatic) || (status == TargetStatusBoth);
+            }
+
             struct RadarStatus
             {
                 ETargetStatus targetStatus;  // Target status of the radar
