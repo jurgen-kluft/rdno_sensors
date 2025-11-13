@@ -53,6 +53,12 @@ UNITTEST_SUITE_BEGIN(frame_reader)
             }
             return bytesRead;
         }
+
+        virtual ncore::s32 write(const ncore::u8* buffer, ncore::s32 length)
+        {
+            // Not needed for testing
+            return length;
+        }
     };
 
     const byte frame_start_A[] = {0xAA, 0xBB, 0xCC, 0xDD};
@@ -102,31 +108,29 @@ UNITTEST_SUITE_BEGIN(frame_reader)
             frame_sequence_t const* endSeqs[]   = {&endSeq};
             frameReader.set_frame_data(startSeqs, endSeqs, frameData, 1);
 
-            u8 const* outMessage       = nullptr;
-            u16       outMessageLen    = 0;
-            s8        outSequenceIndex = -1;
+            frame_result_t fresult;
 
             // Read first frame
-            bool result = frameReader.read(outMessage, outMessageLen, outSequenceIndex);
+            bool result = frameReader.read(fresult);
             CHECK_TRUE(result);
-            CHECK_NOT_NULL(outMessage);
-            CHECK_EQUAL(12, outMessageLen);  // header + data + tail
-            CHECK_EQUAL(0, outSequenceIndex);
-            CHECK_EQUAL(0x10, outMessage[4 + 0]);
-            CHECK_EQUAL(0x20, outMessage[4 + 1]);
-            CHECK_EQUAL(0x30, outMessage[4 + 2]);
-            CHECK_EQUAL(0x40, outMessage[4 + 3]);
+            CHECK_NOT_NULL(fresult.frameStart);
+            CHECK_EQUAL(12, fresult.frameLength);  // header + data + tail
+            CHECK_EQUAL(0, fresult.sequenceIndex);
+            CHECK_EQUAL(0x10, fresult.frameStart[4 + 0]);
+            CHECK_EQUAL(0x20, fresult.frameStart[4 + 1]);
+            CHECK_EQUAL(0x30, fresult.frameStart[4 + 2]);
+            CHECK_EQUAL(0x40, fresult.frameStart[4 + 3]);
 
             // Read second frame
-            result = frameReader.read(outMessage, outMessageLen, outSequenceIndex);
+            result = frameReader.read(fresult);
             CHECK_TRUE(result);
-            CHECK_NOT_NULL(outMessage);
-            CHECK_EQUAL(12, outMessageLen);
-            CHECK_EQUAL(0, outSequenceIndex);
-            CHECK_EQUAL(0x50, outMessage[4 + 0]);
-            CHECK_EQUAL(0x60, outMessage[4 + 1]);
-            CHECK_EQUAL(0x70, outMessage[4 + 2]);
-            CHECK_EQUAL(0x80, outMessage[4 + 3]);
+            CHECK_NOT_NULL(fresult.frameStart);
+            CHECK_EQUAL(12, fresult.frameLength);
+            CHECK_EQUAL(0, fresult.sequenceIndex);
+            CHECK_EQUAL(0x50, fresult.frameStart[4 + 0]);
+            CHECK_EQUAL(0x60, fresult.frameStart[4 + 1]);
+            CHECK_EQUAL(0x70, fresult.frameStart[4 + 2]);
+            CHECK_EQUAL(0x80, fresult.frameStart[4 + 3]);
         }
     }
 
@@ -181,53 +185,51 @@ UNITTEST_SUITE_BEGIN(frame_reader)
             frame_data_t            frameData[]      = {frame_data_t(8, 16), frame_data_t(8, 16)};
             frameReader.set_frame_data(startSequences, endSequences, frameData, 2);
 
-            u8 const* outMessage       = nullptr;
-            u16       outMessageLen    = 0;
-            s8        outSequenceIndex = -1;
+            frame_result_t fresult;
 
             // Read first frame (A)
-            bool result = frameReader.read(outMessage, outMessageLen, outSequenceIndex);
+            bool result = frameReader.read(fresult);
             CHECK_TRUE(result);
-            CHECK_NOT_NULL(outMessage);
-            CHECK_EQUAL(12, outMessageLen);  // header + data + tail
-            CHECK_EQUAL(0, outSequenceIndex);
-            CHECK_EQUAL(0x10, outMessage[4 + 0]);
-            CHECK_EQUAL(0x20, outMessage[4 + 1]);
-            CHECK_EQUAL(0x30, outMessage[4 + 2]);
-            CHECK_EQUAL(0x40, outMessage[4 + 3]);
+            CHECK_NOT_NULL(fresult.frameStart);
+            CHECK_EQUAL(12, fresult.frameLength);  // header + data + tail
+            CHECK_EQUAL(0, fresult.sequenceIndex);
+            CHECK_EQUAL(0x10, fresult.frameStart[4 + 0]);
+            CHECK_EQUAL(0x20, fresult.frameStart[4 + 1]);
+            CHECK_EQUAL(0x30, fresult.frameStart[4 + 2]);
+            CHECK_EQUAL(0x40, fresult.frameStart[4 + 3]);
 
             // Read second frame (B)
-            result = frameReader.read(outMessage, outMessageLen, outSequenceIndex);
+            result = frameReader.read(fresult);
             CHECK_TRUE(result);
-            CHECK_NOT_NULL(outMessage);
-            CHECK_EQUAL(12, outMessageLen);
-            CHECK_EQUAL(1, outSequenceIndex);
-            CHECK_EQUAL(0x50, outMessage[4 + 0]);
-            CHECK_EQUAL(0x60, outMessage[4 + 1]);
-            CHECK_EQUAL(0x70, outMessage[4 + 2]);
-            CHECK_EQUAL(0x80, outMessage[4 + 3]);
+            CHECK_NOT_NULL(fresult.frameStart);
+            CHECK_EQUAL(12, fresult.frameLength);
+            CHECK_EQUAL(1, fresult.sequenceIndex);
+            CHECK_EQUAL(0x50, fresult.frameStart[4 + 0]);
+            CHECK_EQUAL(0x60, fresult.frameStart[4 + 1]);
+            CHECK_EQUAL(0x70, fresult.frameStart[4 + 2]);
+            CHECK_EQUAL(0x80, fresult.frameStart[4 + 3]);
 
             // Read third frame (A)
-            result = frameReader.read(outMessage, outMessageLen, outSequenceIndex);
+            result = frameReader.read(fresult);
             CHECK_TRUE(result);
-            CHECK_NOT_NULL(outMessage);
-            CHECK_EQUAL(12, outMessageLen);
-            CHECK_EQUAL(0, outSequenceIndex);
-            CHECK_EQUAL(0x51, outMessage[4 + 0]);
-            CHECK_EQUAL(0x61, outMessage[4 + 1]);
-            CHECK_EQUAL(0x71, outMessage[4 + 2]);
-            CHECK_EQUAL(0x81, outMessage[4 + 3]);
+            CHECK_NOT_NULL(fresult.frameStart);
+            CHECK_EQUAL(12, fresult.frameLength);
+            CHECK_EQUAL(0, fresult.sequenceIndex);
+            CHECK_EQUAL(0x51, fresult.frameStart[4 + 0]);
+            CHECK_EQUAL(0x61, fresult.frameStart[4 + 1]);
+            CHECK_EQUAL(0x71, fresult.frameStart[4 + 2]);
+            CHECK_EQUAL(0x81, fresult.frameStart[4 + 3]);
 
             // Read fourth frame (B)
-            result = frameReader.read(outMessage, outMessageLen, outSequenceIndex);
+            result = frameReader.read(fresult);
             CHECK_TRUE(result);
-            CHECK_NOT_NULL(outMessage);
-            CHECK_EQUAL(12, outMessageLen);
-            CHECK_EQUAL(1, outSequenceIndex);
-            CHECK_EQUAL(0x52, outMessage[4 + 0]);
-            CHECK_EQUAL(0x62, outMessage[4 + 1]);
-            CHECK_EQUAL(0x72, outMessage[4 + 2]);
-            CHECK_EQUAL(0x82, outMessage[4 + 3]);
+            CHECK_NOT_NULL(fresult.frameStart);
+            CHECK_EQUAL(12, fresult.frameLength);
+            CHECK_EQUAL(1, fresult.sequenceIndex);
+            CHECK_EQUAL(0x52, fresult.frameStart[4 + 0]);
+            CHECK_EQUAL(0x62, fresult.frameStart[4 + 1]);
+            CHECK_EQUAL(0x72, fresult.frameStart[4 + 2]);
+            CHECK_EQUAL(0x82, fresult.frameStart[4 + 3]);
         }
     }
 }

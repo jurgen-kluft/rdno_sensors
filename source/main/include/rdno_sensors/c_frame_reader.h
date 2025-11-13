@@ -38,6 +38,13 @@ namespace ncore
             s16       mMaxFrameLen;  // Maximum frame length
         };
 
+        struct frame_result_t
+        {
+            u8 const *frameStart;
+            u16       frameLength;
+            s8        sequenceIndex;
+        };
+
         struct frame_reader_t
         {
             Stream                  *mSerial;                // Pointer to the serial stream
@@ -67,7 +74,7 @@ namespace ncore
 
             void initialize(Stream *serial, u8 *buffer, u16 bufferCapacity);
             void set_frame_data(frame_sequence_t const **startSequences, frame_sequence_t const **endSequences, frame_data_t *framePointers, s8 sequenceCount);
-            bool read(u8 const *&outFrameStart, u16 &outFrameLength, s8 &outSequenceIndex);
+            bool read(frame_result_t &result);
         };
     }  // namespace nserial
 }  // namespace ncore

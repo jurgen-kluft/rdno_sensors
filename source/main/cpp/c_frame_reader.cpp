@@ -57,13 +57,14 @@ namespace ncore
             return (j == sequence->mLength);
         }
 
-        bool frame_reader_t::read(u8 const *&outFrameStart, u16 &outFrameLength, s8 &outSequenceIndex)
+        bool frame_reader_t::read(frame_result_t &result)
         {
             if (mFoundFrame != nullptr)
             {
                 // Last call found a complete frame, so move any remaining data to the front of the buffer
                 const u16 remainingDataLen = (u16)(mSerialBufferWrite - mFoundFrame->mEndPtr);
-                g_memmove(mSerialBuffer, outFrameStart + outFrameLength, remainingDataLen);
+                if (remainingDataLen > 0)
+                    g_memmove(mSerialBuffer, mFoundFrame->mEndPtr, remainingDataLen);
 
                 // Update read/write pointer
                 mSerialBufferWrite = mSerialBuffer + remainingDataLen;
@@ -118,9 +119,9 @@ namespace ncore
 
             // Guard for maximum frame size, e.g. we found a header but for some reason the end
             // of a frame never arrives and we keep accumulating data in the buffer.
-            if ((mFrameData[mFoundSequence].mEndPtr - mFrameData[mFoundSequence].mStartPtr ) > mFrameData[mFoundSequence].mMaxFrameLen)
+            if ((mFrameData[mFoundSequence].mEndPtr - mFrameData[mFoundSequence].mStartPtr) > mFrameData[mFoundSequence].mMaxFrameLen)
             {
-                // Discard current frame search
+                // Discard current search, we have a start sequence but exceeded max frame size without finding end sequence
                 mFoundSequence     = -1;
                 mSerialBufferWrite = mSerialBuffer;
                 for (u8 i = 0; i < mSequenceCount; ++i)
@@ -146,10 +147,10 @@ namespace ncore
             }
 
             // Setup found message
-            mFoundFrame      = &mFrameData[mFoundSequence];
-            outFrameLength   = (u16)(mFoundFrame->mEndPtr - mFoundFrame->mStartPtr);
-            outFrameStart    = mFoundFrame->mStartPtr;
-            outSequenceIndex = mFoundSequence;
+            mFoundFrame          = &mFrameData[mFoundSequence];
+            result.frameLength   = (u16)(mFoundFrame->mEndPtr - mFoundFrame->mStartPtr);
+            result.frameStart    = mFoundFrame->mStartPtr;
+            result.sequenceIndex = mFoundSequence;
 
             // Initialize to find the next sequence
             mFoundSequence = -1;
