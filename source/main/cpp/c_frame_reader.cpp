@@ -143,6 +143,8 @@ namespace ncore
                     mFrameData[mFoundSequence].mEndPtr += endSequence->mLength;
                     break;
                 }
+                if ((mFrameData[mFoundSequence].mEndPtr + endSequence->mLength) >= mSerialBufferWrite)
+                    return false;
                 mFrameData[mFoundSequence].mEndPtr += 1;
             }
 
