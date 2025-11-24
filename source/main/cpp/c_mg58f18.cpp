@@ -67,7 +67,7 @@ namespace ncore
                 if (rx >= 0 && tx >= 0 && motion_detected_input_pin >= 0)
                 {
                     motion_sensor_pin = ngpio::input_pin_t(motion_detected_input_pin);
-                    nserial1::begin(nbaud::Rate9600, nconfig::MODE_8N1, rx, tx);
+                    nserialx::begin(nserialx::SERIAL1, nbaud::Rate9600, nconfig::MODE_8N1, rx, tx);
                     // Allow time for the Serial port to initialize
                     ntimer::delay(100);
                     return true;
@@ -111,7 +111,7 @@ namespace ncore
             #    define CMD_ENCODE_AND_SEND(cmd, value) \
                     byte command[7];           \
                     cmd_encoder(cmd, value, command); \
-                    nserial1::write(command, sizeof(command))
+                    nserialx::write(nserialx::SERIAL1, command, sizeof(command))
             // clang-format on
 
             void setSensingDistanceThreshold(u32 thresholdInMm) { CMD_ENCODE_AND_SEND(CMD_SET_SENSING_DISTANCE_THRESHOLD, thresholdInMm); }
@@ -132,7 +132,7 @@ namespace ncore
                 CMD_ENCODE_AND_SEND(cmd, 0);
 
                 const u64 startTime = ntimer::millis();
-                while (nserial1::available() < 7 && (ntimer::millis() - startTime) < 100)
+                while (nserialx::available(nserialx::SERIAL1) < 7 && (ntimer::millis() - startTime) < 100)
                 {  // Wait for response
                     ntimer::delay(10);
                 }
@@ -291,7 +291,7 @@ namespace ncore
 
                 // Wait for response
                 const u64 startTime = ntimer::millis();
-                while (nserial1::available() < 7 && (ntimer::millis() - startTime) < 200)
+                while (nserialx::available(nserialx::SERIAL1) < 7 && (ntimer::millis() - startTime) < 200)
                 {
                     ntimer::delay(10);
                 }

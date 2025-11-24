@@ -28,6 +28,8 @@ func GetPackage() *denv.Package {
 	mainpkg.AddPackage(corepkg)
 	mainpkg.AddPackage(cunittestpkg)
 
+	// TODO, make a library per sensor ?
+
 	// main library
 	mainlib := denv.SetupCppLibProject(mainpkg, name)
 	mainlib.AddDependencies(corepkg.GetMainLib())

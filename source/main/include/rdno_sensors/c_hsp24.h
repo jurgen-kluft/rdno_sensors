@@ -7,16 +7,16 @@
 
 #include "rdno_sensors/c_frame_reader.h"
 
-class Stream;
-
 namespace ncore
 {
+    class reader_t;
+
     namespace nsensors
     {
         namespace nseeed
         {
             struct hsp24_t;
-            hsp24_t* create_hsp24(Stream* serial);
+            hsp24_t* create_hsp24(ncore::reader_t* serial_reader);
 
             // Energy value for each moving distance gate
             struct MovementEnergy

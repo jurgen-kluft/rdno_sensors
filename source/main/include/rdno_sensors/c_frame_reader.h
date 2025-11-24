@@ -9,6 +9,8 @@
 
 namespace ncore
 {
+    class reader_t;
+
     namespace nserial
     {
         struct frame_sequence_t
@@ -47,7 +49,7 @@ namespace ncore
 
         struct frame_reader_t
         {
-            Stream                  *mSerial;                // Pointer to the serial stream
+            ncore::reader_t         *mSerialReader;          // Pointer to the serial stream reader
             u8                      *mSerialBuffer;          // Buffer where we are reading serial data into
             u16                      mSerialBufferCapacity;  // Capacity of the serial buffer
             u8                      *mSerialBufferWrite;     // Current write position in the serial buffer
@@ -59,7 +61,7 @@ namespace ncore
             frame_data_t            *mFoundFrame;            // End Sequence was found, this is the end of that sequence in the serial buffer
 
             frame_reader_t()
-                : mSerial(nullptr)
+                : mSerialReader(nullptr)
                 , mSerialBuffer(nullptr)
                 , mSerialBufferCapacity(0)
                 , mSerialBufferWrite(nullptr)
@@ -72,7 +74,7 @@ namespace ncore
             {
             }
 
-            void initialize(Stream *serial, u8 *buffer, u16 bufferCapacity);
+            void initialize(reader_t *serial_reader, u8 *buffer, u16 bufferCapacity);
             void set_frame_data(frame_sequence_t const **startSequences, frame_sequence_t const **endSequences, frame_data_t *framePointers, s8 sequenceCount);
             bool read(frame_result_t &result);
         };

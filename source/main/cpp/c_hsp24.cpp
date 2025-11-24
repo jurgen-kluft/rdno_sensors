@@ -51,7 +51,7 @@ namespace ncore
                 nserial::frame_reader_t mFrameReader;
             };
 
-            hsp24_t *create_hsp24(Stream *serial)
+            hsp24_t *create_hsp24(ncore::reader_t *serial)
             {
                 hsp24_t *sensor = (hsp24_t *)ncore::nsystem::malloc(sizeof(hsp24_t));
                 if (sensor)

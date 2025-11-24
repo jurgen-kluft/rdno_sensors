@@ -1,7 +1,9 @@
 #include "rdno_core/c_log.h"
 #include "rdno_core/c_timer.h"
 #include "rdno_core/c_serial.h"
+
 #include "ccore/c_memory.h"
+#include "ccore/c_stream.h"
 
 #include "rdno_sensors/c_frame_reader.h"
 
@@ -14,9 +16,9 @@ namespace ncore
 {
     namespace nserial
     {
-        void frame_reader_t::initialize(Stream *serial, u8 *buffer, u16 bufferCapacity)
+        void frame_reader_t::initialize(reader_t *serial_reader, u8 *buffer, u16 bufferCapacity)
         {
-            mSerial               = serial;
+            mSerialReader        = serial_reader;
             mSerialBuffer         = buffer;
             mSerialBufferCapacity = bufferCapacity;
             mSerialBufferWrite    = mSerialBuffer;
@@ -81,12 +83,10 @@ namespace ncore
             }
 
             // Read available bytes into buffer using readBytes
-            s32 available = mSerial->available();
-            if (available > 0 && (u16)(mSerialBufferWrite - mSerialBuffer) < mSerialBufferCapacity)
+            if ((u16)(mSerialBufferWrite - mSerialBuffer) < mSerialBufferCapacity)
             {
-                const s32 spaceLeft = mSerialBufferCapacity - (u16)(mSerialBufferWrite - mSerialBuffer);
-                const s32 toRead    = (available < spaceLeft) ? available : spaceLeft;
-                mSerialBufferWrite += mSerial->readBytes(mSerialBufferWrite, toRead);
+                const s64 spaceLeft = mSerialBufferCapacity - (u16)(mSerialBufferWrite - mSerialBuffer);
+                mSerialBufferWrite += mSerialReader->read(mSerialBufferWrite, spaceLeft);
             }
 
             if (mFoundSequence == -1)

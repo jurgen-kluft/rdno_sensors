@@ -10,15 +10,15 @@ namespace ncore
     {
         bool initHMMD(u8 rxPin, u8 txPin)
         {
-            nserial2::begin(nbaud::Rate115200, nconfig::MODE_8N1, rxPin, txPin);
+            nserialx::begin(nserialx::SERIAL2, nbaud::Rate115200, nconfig::MODE_8N1, rxPin, txPin);
 
             // // Put the sensor into 'normal' mode and keep it active
             // const byte command_normal_mode[] = {0xFD, 0xFC, 0xFB, 0xFA, 0x08, 0x00, 0x12, 0x00, 0x00, 0x00, 0x64, 0x00, 0x00, 0x00, 0x04, 0x03, 0x02, 0x01};
-            // nserial2::write(command_normal_mode, sizeof(command_normal_mode));
+            // nserialx::write(command_normal_mode, sizeof(command_normal_mode));
 
             // Put the sensor into 'report' mode and keep it active
             const byte command_report_mode[] = {0xFD, 0xFC, 0xFB, 0xFA, 0x08, 0x00, 0x12, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x04, 0x03, 0x02, 0x01};
-            nserial2::write(command_report_mode, sizeof(command_report_mode));
+            nserialx::write(nserialx::SERIAL2, command_report_mode, sizeof(command_report_mode));
 
             return true;
         }
@@ -78,7 +78,7 @@ namespace ncore
         bool readHMMD2(s8* outDetection, u16* outDistanceInCm)
         {
             // Drain data from Serial2
-            s32 available = nserial2::available();
+            s32 available = nserialx::available(nserialx::SERIAL2);
             while (available > 0)
             {
                 // Calculate the current length of read data in the buffer, taking into account wrap-around of the circular buffer
@@ -89,7 +89,7 @@ namespace ncore
                 {
                     // Determine how many bytes we can read without overflowing the circular buffer
                     const s32 numBytesCanRead = hmmdRxBufferWritePos >= hmmdRxBufferReadPos ? hmmdRxBufferSize - hmmdRxBufferWritePos : hmmdRxBufferReadPos - hmmdRxBufferWritePos;
-                    const s32 numBytesRead    = static_cast<s32>(nserial2::read_bytes(&hmmdRxBuffer[hmmdRxBufferWritePos], numBytesCanRead <= available ? numBytesCanRead : available));
+                    const s32 numBytesRead    = static_cast<s32>(nserialx::read_bytes(nserialx::SERIAL2, &hmmdRxBuffer[hmmdRxBufferWritePos], numBytesCanRead <= available ? numBytesCanRead : available));
                     if (numBytesRead == 0)
                     {
                         available = -1;  // Error condition, exit the loop
@@ -143,7 +143,7 @@ namespace ncore
                     }
                 }
 
-                available = nserial2::available();
+                available = nserialx::available(nserialx::SERIAL2);
             }
             return false;
         }
@@ -155,11 +155,11 @@ namespace ncore
             g_memset(line, 0, sizeof(line));
 
             // Drain data from Serial2
-            s32 available = nserial2::available();
+            s32 available = nserialx::available(nserialx::SERIAL2);
             while (available > 0)
             {
                 // Read a line of text until a newline character (\n) is received
-                s32 lineLength = nserial2::read_until('\n', line, 128 - 1);
+                s32 lineLength = nserialx::read_until(nserialx::SERIAL2, '\n', line, 128 - 1);
                 if (lineLength == 0)
                 {
                     break;  // No more data available
@@ -191,7 +191,7 @@ namespace ncore
                     }
                 }
 
-                available = nserial2::available();
+                available = nserialx::available(nserialx::SERIAL2);
             }
 
             return false;
